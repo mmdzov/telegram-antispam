@@ -10,6 +10,7 @@ const inlineGroup = require("./inline/inline_group");
 const inlineAnalysis = require("./inline/inline_analysis");
 const inlineAutomate = require("./inline/inline_automate");
 const commandFilter = require("./commands/com_filter");
+const { addFilter, removeFilter } = require("./utils/util_setting");
 
 bot.start((ctx) => {
   if (ctx.chat.type === "supergroup") {
@@ -47,14 +48,10 @@ bot.start((ctx) => {
               }
             );
           });
-        } else {
-          ctx.telegram.deleteMessage(
-            ctx.message.chat.id,
-            ctx.message.message_id
-          );
         }
       }
     });
+    ctx.telegram.deleteMessage(ctx.message.chat.id, ctx.message.message_id);
   } else {
     ctx.reply(
       `
@@ -118,10 +115,23 @@ bot.action(/.+/, (ctx) => {
         .reply_markup.inline_keyboard,
     });
   }
-  console.log(ctx);
   inlineSetting.inlineSettingAction(ctx);
 });
 
+bot.on("message", (ctx) => {
+  fs.readFile("data/sessions.json", "utf8", (err, data) => {
+    data = JSON.parse(data);
+    const index = data.findIndex((item) => item.body.from === ctx.from.id);
+    if (index >= 0) {
+      if (data[index].payload === "addFilter") {
+        addFilter(ctx);
+      }
+      if (data[index].payload === "unFilter") {
+        removeFilter(ctx);
+      }
+    }
+  });
+});
 commandFilter(bot);
 
 bot.launch();

@@ -33,7 +33,49 @@ function getUserAllGroups(userId) {
   return userGroups;
 }
 
+async function LeaveBotFromAllGroups(ctx) {
+  let groups = fs.readFileSync("data/groups.json");
+  groups = JSON.parse(groups);
+  groups = groups.map((item) => {
+    let index = item.admin.findIndex((uid) => uid === ctx.from.id);
+    if (index >= 0) {
+      ctx.telegram.leaveChat(item.chatId);
+    } else {
+      return item;
+    }
+  });
+  fs.writeFileSync("data/groups.json", JSON.stringify(groups ?? []), (err) => {
+    if (err) console.log(err);
+  });
+  ctx.reply("ربات از تمام گروه هایی که ادمین بود خارج شد.");
+}
+async function leaveBotFromGroup(ctx, key) {
+  let groups = fs.readFileSync("data/groups.json");
+  groups = JSON.parse(groups);
+  let groupName = "";
+  let groupId = +key.match(/[0-9\-]/g).join("");
+  const trimGroups = groups.filter((item) => {
+    const index = item.admin.findIndex((uid) => uid === ctx.from.id);
+    if (index >= 0) {
+      if (item.chatId !== groupId) return item;
+      else groupName = item.groupName;
+    }
+  });
+  ctx.telegram.leaveChat(groupId);
+
+  fs.writeFileSync(
+    "data/groups.json",
+    JSON.stringify(trimGroups ?? []),
+    (err) => {
+      if (err) console.log(err);
+    }
+  );
+  ctx.reply(`ربات از گروه خارج شد.`);
+}
+
 module.exports = {
   joinGroup,
   getUserAllGroups,
+  LeaveBotFromAllGroups,
+  leaveBotFromGroup,
 };
