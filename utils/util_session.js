@@ -3,16 +3,21 @@ const fs = require("fs");
 function addSession(body, payload) {
   fs.readFile("data/sessions.json", "utf8", (err, data) => {
     data = JSON.parse(data);
-    data.push({
-      body: {
-        ...body,
-        expire: Date.now() + 60 * 60 * 1000,
-      },
-      payload,
-    });
-    fs.writeFile("data/sessions.json", JSON.stringify(data), (err) => {
-      if (err) console.log(err);
-    });
+    const index = data.findIndex(
+      (item) => item.body.from === body.from && item.payload === payload
+    );
+    if (index === -1) {
+      data.push({
+        body: {
+          ...body,
+          expire: Date.now() + 60 * 60 * 1000,
+        },
+        payload,
+      });
+      fs.writeFile("data/sessions.json", JSON.stringify(data), (err) => {
+        if (err) console.log(err);
+      });
+    }
   });
   return;
 }

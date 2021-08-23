@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { removeSession } = require("../utils/util_session");
 
 async function joinGroup(newData, cb) {
   try {
@@ -98,10 +99,69 @@ function selectPanelGroup(ctx, groupId) {
   });
 }
 
+function limitSendMessageGroup(ctx) {
+  // console.log(ctx.update.callback_query);
+  const message = +ctx.message.text;
+  if (!message || message > 1000 || message < 3) {
+    ctx.reply("فقط اعداد 3 تا 1000 مورد قبول هستند");
+    return;
+  }
+  fs.readFile("data/sessions.json", "utf8", (err, data) => {
+    if (err) console.log(err);
+    data = JSON.parse(data);
+    const index = data.findIndex(
+      (item) => item.body.from === ctx.from.id && item.payload === "limitSend"
+    );
+    if (index >= 0) {
+      getAndModifyGroupLocks(ctx, "limitSend", message);
+      // ctx.editMessageReplyMarkup(
+      //   data[index].chatId,
+      //   data[index].message_id,
+      //   undefined,
+      //   g.inlineGroup(ctx, { key: "limitSend", value: message })
+      //     .inlineGroupLocks
+      // );
+      ctx.reply("اعمال شد");
+    } else {
+      ctx.reply("مشکلی پیش آمده لطفا بازگشت بزنید و دوباره امتحان کنید");
+    }
+  });
+}
+
+function getAndModifyGroupLocks(ctx, key, value, title) {
+  let sessions = fs.readFileSync("data/session.group.json", "utf8");
+  sessions = JSON.parse(sessions);
+  const groupIndex = sessions.findIndex((item) => item.userId === ctx.from.id);
+  const groupId = +sessions[groupIndex]?.groupId;
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  const index = groups.findIndex((item) => item.chatId === groupId);
+  if (key && value !== "") {
+    if (key === "full") {
+      for (let i in groups[index]?.locks) {
+        if (typeof groups[index]?.locks[i] === "boolean") {
+          groups[index].locks[i] = value;
+        }
+      }
+    } else {
+      groups[index].locks[key] = value;
+    }
+    fs.writeFile("data/groups.json", JSON.stringify(groups), (err) => {
+      if (err) {
+        console.log(err);
+      }
+    });
+    // ctx.reply(`اعمال شد`);
+  }
+  return groups[index];
+}
+
 module.exports = {
   joinGroup,
   getUserAllGroups,
   LeaveBotFromAllGroups,
   leaveBotFromGroup,
   selectPanelGroup,
+  getAndModifyGroupLocks,
+  limitSendMessageGroup,
 };

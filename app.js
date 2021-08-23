@@ -1,5 +1,9 @@
 const { Telegraf } = require("telegraf");
-const { joinGroup } = require("./dist/group.js");
+const {
+  joinGroup,
+  getAndModifyGroupLocks,
+  limitSendMessageGroup,
+} = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
 let fs = require("fs");
@@ -16,6 +20,7 @@ const {
   unbanUserFromReply,
   handleBanUserWithKey,
 } = require("./dist/ban.js");
+const { removeSession } = require("./utils/util_session.js");
 
 bot.start((ctx) => {
   if (ctx.chat.type === "supergroup") {
@@ -47,6 +52,21 @@ bot.start((ctx) => {
                 date: ctx.message.date,
                 groupName: ctx.chat.title,
                 admin: [ctx.from.id],
+                banlist: [],
+                locks: {
+                  full: false,
+                  auto: { hasEnabled: false, now: null, expire: null },
+                  filter: true,
+                  message: false,
+                  voice: false,
+                  photo: false,
+                  video: false,
+                  gif: false,
+                  sticker: false,
+                  file: false,
+                  limitSend: 10,
+                  addUser: false,
+                },
               },
               (msg) => {
                 ctx.telegram.sendMessage(ctx.message.from.id, msg, inlineMain);
@@ -74,6 +94,8 @@ bot.start((ctx) => {
 
 bot.action(/.+/, (ctx) => {
   const key = ctx.match[0];
+  let group = getAndModifyGroupLocks(ctx);
+  const locks = group?.locks;
   if (key === "backToHome") {
     ctx.editMessageReplyMarkup({
       inline_keyboard: inlineMain.reply_markup.inline_keyboard,
@@ -89,22 +111,23 @@ bot.action(/.+/, (ctx) => {
     });
   } else if (key.includes("manageGroup")) {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: g.inlineGroup().groupKeys.reply_markup.inline_keyboard,
+      inline_keyboard:
+        g.inlineGroup(ctx).groupKeys.reply_markup.inline_keyboard,
     });
   } else if (key === "bans") {
     ctx.editMessageReplyMarkup({
       inline_keyboard:
-        g.inlineGroup().inlineGroupManageBans.reply_markup.inline_keyboard,
+        g.inlineGroup(ctx).inlineGroupManageBans.reply_markup.inline_keyboard,
     });
   } else if (key === "group") {
     ctx.editMessageReplyMarkup({
       inline_keyboard:
-        g.inlineGroup().inlineGroupManage.reply_markup.inline_keyboard,
+        g.inlineGroup(ctx).inlineGroupManage.reply_markup.inline_keyboard,
     });
   } else if (key === "lockGroup") {
     ctx.editMessageReplyMarkup({
       inline_keyboard:
-        g.inlineGroup().inlineGroupLocks.reply_markup.inline_keyboard,
+        g.inlineGroup(ctx).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "analysis") {
     ctx.editMessageReplyMarkup({
@@ -165,6 +188,10 @@ bot.on("message", (ctx) => {
       }
       if (data[index].payload === "unbanallUser") {
         handleBanUserWithKey(ctx, "", "unbanallUser");
+      }
+      if (data[index].payload === "limitSend") {
+        limitSendMessageGroup(ctx);
+        removeSession("from", ctx.from.id, "limitSend");
       }
     }
   });
