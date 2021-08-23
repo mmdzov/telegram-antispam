@@ -1,16 +1,21 @@
-const { Telegraf, Markup } = require("telegraf");
-const { joinGroup } = require("./group/group");
+const { Telegraf } = require("telegraf");
+const { joinGroup } = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
 let fs = require("fs");
 const inlineSetting = require("./inline/inline_setting");
 const inlineMain = require("./inline/inline_main");
-const inlinePanel = require("./inline/inline_panel");
-const inlineGroup = require("./inline/inline_group");
+const panel = require("./inline/inline_panel");
+const g = require("./inline/inline_group");
 const inlineAnalysis = require("./inline/inline_analysis");
 const inlineAutomate = require("./inline/inline_automate");
 const commandFilter = require("./commands/com_filter");
 const { addFilter, removeFilter } = require("./utils/util_setting");
+const {
+  banUserFromReply,
+  unbanUserFromReply,
+  handleBanUserWithKey,
+} = require("./dist/ban.js");
 
 bot.start((ctx) => {
   if (ctx.chat.type === "supergroup") {
@@ -41,7 +46,7 @@ bot.start((ctx) => {
                 chatId: ctx.chat.id,
                 date: ctx.message.date,
                 groupName: ctx.chat.title,
-                admin: admins,
+                admin: [ctx.from.id],
               },
               (msg) => {
                 ctx.telegram.sendMessage(ctx.message.from.id, msg, inlineMain);
@@ -79,26 +84,27 @@ bot.action(/.+/, (ctx) => {
     });
   } else if (key === "panel") {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlinePanel(ctx.from.id).reply_markup.inline_keyboard,
+      inline_keyboard: panel.inlinePanel(ctx.from.id).reply_markup
+        .inline_keyboard,
     });
   } else if (key.includes("manageGroup")) {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineGroup().groupKeys.reply_markup.inline_keyboard,
+      inline_keyboard: g.inlineGroup().groupKeys.reply_markup.inline_keyboard,
     });
   } else if (key === "bans") {
     ctx.editMessageReplyMarkup({
       inline_keyboard:
-        inlineGroup().inlineGroupManageBans.reply_markup.inline_keyboard,
+        g.inlineGroup().inlineGroupManageBans.reply_markup.inline_keyboard,
     });
   } else if (key === "group") {
     ctx.editMessageReplyMarkup({
       inline_keyboard:
-        inlineGroup().inlineGroupManage.reply_markup.inline_keyboard,
+        g.inlineGroup().inlineGroupManage.reply_markup.inline_keyboard,
     });
   } else if (key === "lockGroup") {
     ctx.editMessageReplyMarkup({
       inline_keyboard:
-        inlineGroup().inlineGroupLocks.reply_markup.inline_keyboard,
+        g.inlineGroup().inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "analysis") {
     ctx.editMessageReplyMarkup({
@@ -116,6 +122,25 @@ bot.action(/.+/, (ctx) => {
     });
   }
   inlineSetting.inlineSettingAction(ctx);
+  panel.inlinePanelAction(ctx);
+  g.inlineGroupAction(ctx);
+});
+
+bot.hears("مسدود", (ctx, next) => {
+  banUserFromReply(ctx);
+  return next();
+});
+bot.hears("مسدود همه", (ctx, next) => {
+  unbanUserFromReply(ctx);
+  return next();
+});
+bot.hears("حذف مسدود", (ctx, next) => {
+  unbanUserFromReply(ctx);
+  return next();
+});
+bot.hears("حذف مسدود همه", (ctx, next) => {
+  unbanUserFromReply(ctx);
+  return next();
 });
 
 bot.on("message", (ctx) => {
@@ -129,9 +154,22 @@ bot.on("message", (ctx) => {
       if (data[index].payload === "unFilter") {
         removeFilter(ctx);
       }
+      if (data[index].payload === "banUser") {
+        handleBanUserWithKey(ctx, "");
+      }
+      if (data[index].payload === "unbanUser") {
+        handleBanUserWithKey(ctx, "حذف");
+      }
+      if (data[index].payload === "banallUser") {
+        handleBanUserWithKey(ctx, "", "banallUser");
+      }
+      if (data[index].payload === "unbanallUser") {
+        handleBanUserWithKey(ctx, "", "unbanallUser");
+      }
     }
   });
 });
+
 commandFilter(bot);
 
 bot.launch();

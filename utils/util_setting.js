@@ -1,7 +1,7 @@
 const bot = require("../config/requires");
 const fs = require("fs");
 const { Markup } = require("telegraf");
-const { getUserAllGroups } = require("../group/group");
+const { getUserAllGroups } = require("../dist/group.js");
 
 let backToHome = Markup.keyboard([
   Markup.button.callback("بازگشت", "backToHome"),

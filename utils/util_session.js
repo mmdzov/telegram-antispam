@@ -17,10 +17,17 @@ function addSession(body, payload) {
   return;
 }
 
-function removeSession(key, value) {
+function removeSession(key, value, payload = "") {
   fs.readFile("data/sessions.json", "utf8", (err, data) => {
     data = JSON.parse(data);
-    let filteredData = data.filter((item) => item.body[key] !== value);
+    let filteredData = [];
+    if (!payload) {
+      filteredData = data.filter((item) => item.body[key] !== value);
+    } else {
+      filteredData = data.filter(
+        (item) => item.body[key] !== value && item.payload !== payload
+      );
+    }
     fs.writeFile("data/sessions.json", JSON.stringify(filteredData), (err) => {
       if (err) console.log(err);
     });

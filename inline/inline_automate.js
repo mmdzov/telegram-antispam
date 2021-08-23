@@ -1,5 +1,5 @@
 const { Markup } = require("telegraf");
-const { getUserAllGroups } = require("../group/group");
+const { getUserAllGroups } = require("../dist/group.js");
 const { callback: b } = Markup.button;
 
 const inlineAutomate = (userId) => {

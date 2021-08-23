@@ -7,7 +7,7 @@ async function joinGroup(newData, cb) {
     });
     data = JSON.parse(data);
     let index = await data.findIndex((item) => item.chatId === newData.chatId);
-    console.log(index);
+    // console.log(index);
     if (index === -1) {
       await data.push(newData);
       await fs.writeFileSync("data/groups.json", JSON.stringify(data));
@@ -73,9 +73,35 @@ async function leaveBotFromGroup(ctx, key) {
   ctx.reply(`ربات از گروه خارج شد.`);
 }
 
+function selectPanelGroup(ctx, groupId) {
+  fs.readFile("data/session.group.json", "utf8", (err, data) => {
+    if (err) console.log(err);
+    data = JSON.parse(data);
+    const index = data.findIndex((item) => item.userId === ctx.from.id);
+    if (index >= 0) {
+      const filteredData = data.filter(
+        (item) => item.userId !== data[index].userId
+      );
+      fs.writeFile(
+        "data/session.group.json",
+        JSON.stringify(filteredData),
+        (err) => {
+          if (err) console.log(err);
+        }
+      );
+    } else {
+      data.push({ userId: ctx.from.id, groupId });
+      fs.writeFile("data/session.group.json", JSON.stringify(data), (err) => {
+        if (err) console.log(err);
+      });
+    }
+  });
+}
+
 module.exports = {
   joinGroup,
   getUserAllGroups,
   LeaveBotFromAllGroups,
   leaveBotFromGroup,
+  selectPanelGroup,
 };

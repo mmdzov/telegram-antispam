@@ -10,7 +10,7 @@ const {
   getUserAllGroups,
   LeaveBotFromAllGroups,
   leaveBotFromGroup,
-} = require("../group/group");
+} = require("../dist/group");
 const { callback: b } = Markup.button;
 
 let inlineSetting = Markup.inlineKeyboard([
