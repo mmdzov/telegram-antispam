@@ -7,6 +7,9 @@ const {
   changeGroupName,
   changeGroupBio,
   getUserAllGroups,
+  filterGroupMessage,
+  deleteMessageFromGroup,
+  getGroupWelcomeMessage,
 } = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
@@ -18,7 +21,11 @@ const g = require("./inline/inline_group");
 const inlineAnalysis = require("./inline/inline_analysis");
 const inlineAutomate = require("./inline/inline_automate");
 const commandFilter = require("./commands/com_filter");
-const { addFilter, removeFilter } = require("./utils/util_setting");
+const {
+  addFilter,
+  removeFilter,
+  viewUserFilter,
+} = require("./utils/util_setting");
 const {
   banUserFromReply,
   unbanUserFromReply,
@@ -119,10 +126,23 @@ bot.start((ctx) => {
 
 bot.action(/.+/, (ctx, next) => {
   const key = ctx.match[0];
+  if (key.includes("acceptAndDelete")) {
+    ctx.getChatAdministrators().then((admin) => {
+      if (admin.some((item) => item.user.id === ctx.from.id)) {
+        ctx.telegram.deleteMessage(
+          ctx.chat.id,
+          ctx.update.callback_query.message.message_id
+        );
+      }
+    });
+    return next();
+  }
   let lastMsgId = hasLastMsgId(
     ctx,
     ctx.update.callback_query.message.message_id
   );
+
+  //check message logs
   if (!lastMsgId) return;
   let group = getAndModifyGroupLocks(ctx);
   const locks = group?.locks;
@@ -198,6 +218,8 @@ bot.hears("حذف مسدود همه", (ctx, next) => {
 });
 
 bot.on("message", (ctx, next) => {
+  // console.log(ctx);
+
   fs.readFile("data/sessions.json", "utf8", (err, data) => {
     data = JSON.parse(data);
     const index = data.findIndex((item) => item.body.from === ctx.from.id);
@@ -240,6 +262,34 @@ bot.on("message", (ctx, next) => {
   });
   return next();
 });
+bot.on("message", (ctx) => {
+  console.log();
+  console.log();
+  if (ctx.message?.left_chat_member) {
+    ctx.deleteMessage(ctx.message.message_id);
+  } else if (ctx.message?.new_chat_member) {
+    ctx.deleteMessage(ctx.message.message_id);
+    getGroupWelcomeMessage(ctx);
+  }
+  // console.log(ctx.message);
+  //handle filtering
+  const message = ctx.message.text;
+  if (ctx.chat.type === "supergroup") {
+    filterGroupMessage(ctx);
+  }
+  if (message) {
+    if (message.includes("!فیلتر")) {
+      removeFilter(ctx, message);
+    } else if (message.includes("نمایش فیلتر")) {
+      viewUserFilter(ctx);
+    } else if (message.includes("فیلتر")) {
+      addFilter(ctx, message);
+    } else if (message.includes("حذف")) {
+      deleteMessageFromGroup(ctx);
+    }
+  }
+});
+
 bot.on("photo", (ctx) => {
   bot.telegram.getFile(ctx.message.photo[0].file_id).then((item) => {
     bot.telegram.setChatPhoto(-1001413685786, ctx.message.photo[0].file_id);

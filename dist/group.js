@@ -1,4 +1,5 @@
 const fs = require("fs");
+const { Scenes } = require("telegraf");
 const bot = require("../config/requires");
 const { removeSession } = require("../utils/util_session");
 
@@ -222,7 +223,7 @@ function getGroupInviteLink(ctx) {
   const groupId = sessionGroups[index]?.groupId;
   ctx.telegram.exportChatInviteLink(groupId).then((item) => {
     ctx.reply(`لینک گروه:
-    
+
 ${item}`);
   });
 }
@@ -240,13 +241,99 @@ ${item.invite_link}`);
   });
 }
 
+function filterGroupMessage(ctx) {
+  const message = ctx.message?.text;
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  const index = groups.findIndex((item) => item.chatId === ctx.chat.id);
+  if (groups[index].locks.filter) {
+    let filters = fs.readFileSync("data/filters.json", "utf8");
+    filters = JSON.parse(filters);
+    const filterIndex = filters.findIndex(
+      (item) => item.userId === groups[index].admin[0]
+    );
+    if (message) {
+      let modifyMsg = message?.replace(/[\u200B-\u200D\uFEFF]/g, " ");
+      modifyMsg = modifyMsg.replace("  ", " ");
+      modifyMsg = modifyMsg.split(" ");
+      modifyMsg.forEach((item) => {
+        if (filters[filterIndex].list.includes(item)) {
+          bot.telegram.deleteMessage(ctx.chat.id, ctx.message.message_id);
+        }
+      });
+    }
+  }
+}
+
+function deleteMessageFromGroup(ctx) {
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  let groupIndex = -1;
+  if (ctx.chat.type === "supergroup") {
+    groupIndex = groups.findIndex((item) => item.chatId === ctx.chat.id);
+  } else {
+    //
+  }
+  const userHasAdmin = groups[groupIndex].admin.includes(ctx.message.from.id);
+  if (!userHasAdmin) return;
+  let message = ctx.message.text.match(/[0-9]/g).join("");
+  let b = 0;
+  for (let i = 0; i <= +message; i++) {
+    b = ctx.message.message_id - i;
+    // console.log(b);
+    bot.telegram
+      .deleteMessage(groups[groupIndex].chatId, b)
+      .then((t) => {
+        // console.log(t);
+      })
+      .catch((e) => {
+        // console.log(e);
+      });
+  }
+}
+
+async function getGroupWelcomeMessage(ctx) {
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  let groupIndex = -1;
+  if (ctx.chat.type === "supergroup") {
+    groupIndex = groups.findIndex((item) => item.chatId === ctx.chat.id);
+  } else {
+    //
+  }
+
+  // const userHasAdmin = groups[groupIndex].admin.includes(ctx.message.from.id);
+  // if (!userHasAdmin) return;
+  const splitWelcome = groups[groupIndex].welcomeMsg.trim().split(" ");
+  if (splitWelcome.length > 0) {
+    let i = await bot.telegram.getChat(groups[groupIndex].chatId);
+    let s = splitWelcome.map((item) => {
+      if (/[A-Z]/g.test(item)) {
+        if (item === "FIRST_NAME") item = ctx.from.first_name;
+        if (item === "GROUP_NAME") {
+          item = i.title;
+          return item;
+        }
+        if (item === "LAST_NAME") item = ctx.from.last_name;
+        if (item === "USERNAME") item = "@" + ctx.from.username;
+        return item;
+      }
+      return item;
+    });
+    ctx.reply(s.join(" "));
+  }
+}
+
 module.exports = {
   joinGroup,
+  filterGroupMessage,
   getUserAllGroups,
   LeaveBotFromAllGroups,
   getGroupInviteLink,
   leaveBotFromGroup,
+  getGroupWelcomeMessage,
   changeGroupInviteLink,
+  deleteMessageFromGroup,
   changeGroupBio,
   changeGroupName,
   selectPanelGroup,
