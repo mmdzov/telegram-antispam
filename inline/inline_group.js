@@ -7,7 +7,11 @@ const {
   clearBanList,
   clearBanListAll,
 } = require("../dist/ban");
-const { getAndModifyGroupLocks } = require("../dist/group");
+const {
+  getAndModifyGroupLocks,
+  getGroupInviteLink,
+  changeGroupInviteLink,
+} = require("../dist/group");
 const { addSession, removeSession } = require("../utils/util_session");
 const { callback: b } = Markup.button;
 
@@ -291,10 +295,33 @@ GROUP_NAME
       }).inlineGroupManage.reply_markup.inline_keyboard,
     });
   } else if (key === "groupChangeImage") {
+    addSession(
+      {
+        from: ctx.from.id,
+      },
+      "groupChangeImage"
+    );
+    ctx.reply("تصویر خود را ارسال کنید قربان");
   } else if (key === "groupChangeName") {
+    addSession(
+      {
+        from: ctx.from.id,
+      },
+      "groupChangeName"
+    );
+    ctx.reply("نام جدید گروه را ارسال کنید قربان");
   } else if (key === "groupChangeBio") {
+    addSession(
+      {
+        from: ctx.from.id,
+      },
+      "groupChangeBio"
+    );
+    ctx.reply("بیوی جدید گروه را ارسال کنید قربان");
   } else if (key === "groupGetInviteLink") {
+    getGroupInviteLink(ctx);
   } else if (key === "groupChangeInviteLink") {
+    changeGroupInviteLink(ctx);
   } else if (key === "verifyNewUsers") {
     ctx.editMessageReplyMarkup({
       inline_keyboard: inlineGroup(ctx, {

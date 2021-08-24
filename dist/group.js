@@ -1,4 +1,5 @@
 const fs = require("fs");
+const bot = require("../config/requires");
 const { removeSession } = require("../utils/util_session");
 
 async function joinGroup(newData, cb) {
@@ -178,11 +179,76 @@ function setWelcomeMsg(ctx) {
   }
 }
 
+function changeGroupName(ctx) {
+  let sessionGroup = fs.readFileSync("data/session.group.json", "utf8");
+  sessionGroup = JSON.parse(sessionGroup);
+  const sessionGroupIndex = sessionGroup.findIndex(
+    (item) => item.userId === ctx.from.id
+  );
+  const groupId = sessionGroup[sessionGroupIndex].groupId;
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  const index = groups.findIndex((item) => item.chatId === +groupId);
+  if (groups[index].admin.includes(ctx.from.id)) {
+    bot.telegram.setChatTitle(groups[index].chatId, ctx.message.text);
+    ctx.reply("نام گروه تغییر کرد.");
+  } else {
+    ctx.reply("شما ادمین نیستیی.");
+  }
+}
+
+function changeGroupBio(ctx) {
+  let sessionGroup = fs.readFileSync("data/session.group.json", "utf8");
+  sessionGroup = JSON.parse(sessionGroup);
+  const sessionGroupIndex = sessionGroup.findIndex(
+    (item) => item.userId === ctx.from.id
+  );
+  const groupId = sessionGroup[sessionGroupIndex].groupId;
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  const index = groups.findIndex((item) => item.chatId === +groupId);
+  if (groups[index].admin.includes(ctx.from.id)) {
+    bot.telegram.setChatDescription(groups[index].chatId, ctx.message.text);
+    ctx.reply("بیوی گروه تغییر کرد.");
+  } else {
+    ctx.reply("شما ادمین نیستیی.");
+  }
+}
+
+function getGroupInviteLink(ctx) {
+  let sessionGroups = fs.readFileSync("data/session.group.json", "utf8");
+  sessionGroups = JSON.parse(sessionGroups);
+  const index = sessionGroups.findIndex((item) => item.userId === ctx.from.id);
+  const groupId = sessionGroups[index]?.groupId;
+  ctx.telegram.exportChatInviteLink(groupId).then((item) => {
+    ctx.reply(`لینک گروه:
+    
+${item}`);
+  });
+}
+
+function changeGroupInviteLink(ctx) {
+  let sessionGroups = fs.readFileSync("data/session.group.json", "utf8");
+  sessionGroups = JSON.parse(sessionGroups);
+  const index = sessionGroups.findIndex((item) => item.userId === ctx.from.id);
+  const groupId = sessionGroups[index]?.groupId;
+  ctx.telegram.createChatInviteLink(groupId).then((item) => {
+    console.log(item);
+    ctx.reply(`لینک گروه تغییر کرد. لینک جدید:
+
+${item.invite_link}`);
+  });
+}
+
 module.exports = {
   joinGroup,
   getUserAllGroups,
   LeaveBotFromAllGroups,
+  getGroupInviteLink,
   leaveBotFromGroup,
+  changeGroupInviteLink,
+  changeGroupBio,
+  changeGroupName,
   selectPanelGroup,
   getAndModifyGroupLocks,
   setWelcomeMsg,

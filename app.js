@@ -4,6 +4,9 @@ const {
   getAndModifyGroupLocks,
   limitSendMessageGroup,
   setWelcomeMsg,
+  changeGroupName,
+  changeGroupBio,
+  getUserAllGroups,
 } = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
@@ -22,6 +25,7 @@ const {
   handleBanUserWithKey,
 } = require("./dist/ban.js");
 const { removeSession } = require("./utils/util_session.js");
+const { addMessageLog, hasLastMsgId } = require("./utils/message.log.js");
 
 bot.start((ctx) => {
   if (ctx.chat.type === "supergroup") {
@@ -76,7 +80,11 @@ bot.start((ctx) => {
               },
 
               (msg) => {
-                ctx.telegram.sendMessage(ctx.message.from.id, msg, inlineMain);
+                ctx.telegram
+                  .sendMessage(ctx.message.from.id, msg, inlineMain)
+                  .then((item) => {
+                    // addMessageLog(ctx, item.message_id);
+                  });
               }
             );
           });
@@ -85,22 +93,37 @@ bot.start((ctx) => {
     });
     ctx.telegram.deleteMessage(ctx.message.chat.id, ctx.message.message_id);
   } else {
-    ctx.reply(
-      `
-            سلام ${ctx.message.from.first_name} 👮🏻‍♂
-        
-        پلیس امنیت گروه آماده خدمت رسانی هست.
-        
-        کافیه من رو توی گروهی که میخوای امنیتش رو تامین کنی ادد کنی و بعد ادمینم کنی و بعد بهم اجازه بدی که امنیت گروه تا چه حد تامین بشه.
-        
-        آماده اجرای دستوراتت هستم قربان👮🏻‍♂
-            `
-    );
+    const hasGroupExist = getUserAllGroups(ctx.from.id);
+    if (hasGroupExist.length > 0) {
+      ctx.telegram
+        .sendMessage(ctx.message.from.id, "دستور بده قربان", inlineMain)
+        .then((item) => {
+          addMessageLog(ctx, item.message_id);
+        });
+      // bot.telegram.deleteMessage(ctx.chat.id,)
+    } else {
+      ctx.reply(
+        `
+              سلام ${ctx.message.from.first_name} 👮🏻‍♂
+          
+          پلیس امنیت گروه آماده خدمت رسانی هست.
+          
+          کافیه من رو توی گروهی که میخوای امنیتش رو تامین کنی ادد کنی و بعد ادمینم کنی و بعد بهم اجازه بدی که امنیت گروه تا چه حد تامین بشه.
+          
+          آماده اجرای دستوراتت هستم قربان👮🏻‍♂
+              `
+      );
+    }
   }
 });
 
-bot.action(/.+/, (ctx) => {
+bot.action(/.+/, (ctx, next) => {
   const key = ctx.match[0];
+  let lastMsgId = hasLastMsgId(
+    ctx,
+    ctx.update.callback_query.message.message_id
+  );
+  if (!lastMsgId) return;
   let group = getAndModifyGroupLocks(ctx);
   const locks = group?.locks;
   if (key === "backToHome") {
@@ -154,6 +177,7 @@ bot.action(/.+/, (ctx) => {
   inlineSetting.inlineSettingAction(ctx);
   panel.inlinePanelAction(ctx);
   g.inlineGroupAction(ctx);
+  return next();
 });
 
 bot.hears("مسدود", (ctx, next) => {
@@ -173,7 +197,7 @@ bot.hears("حذف مسدود همه", (ctx, next) => {
   return next();
 });
 
-bot.on("message", (ctx) => {
+bot.on("message", (ctx, next) => {
   fs.readFile("data/sessions.json", "utf8", (err, data) => {
     data = JSON.parse(data);
     const index = data.findIndex((item) => item.body.from === ctx.from.id);
@@ -204,10 +228,23 @@ bot.on("message", (ctx) => {
         setWelcomeMsg(ctx);
         removeSession("from", ctx.from.id, "setWelcomeMsg");
       }
+      if (data[index].payload === "groupChangeName") {
+        changeGroupName(ctx);
+        removeSession("from", ctx.from.id, "groupChangeName");
+      }
+      if (data[index].payload === "groupChangeBio") {
+        changeGroupBio(ctx);
+        removeSession("from", ctx.from.id, "groupChangeBio");
+      }
     }
   });
+  return next();
 });
-
+bot.on("photo", (ctx) => {
+  bot.telegram.getFile(ctx.message.photo[0].file_id).then((item) => {
+    bot.telegram.setChatPhoto(-1001413685786, ctx.message.photo[0].file_id);
+  });
+});
 commandFilter(bot);
 
 bot.launch();
