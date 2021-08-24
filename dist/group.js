@@ -128,7 +128,7 @@ function limitSendMessageGroup(ctx) {
   });
 }
 
-function getAndModifyGroupLocks(ctx, key, value, title) {
+function getAndModifyGroupLocks(ctx, key, value, rule = false) {
   let sessions = fs.readFileSync("data/session.group.json", "utf8");
   sessions = JSON.parse(sessions);
   const groupIndex = sessions.findIndex((item) => item.userId === ctx.from.id);
@@ -137,14 +137,18 @@ function getAndModifyGroupLocks(ctx, key, value, title) {
   groups = JSON.parse(groups);
   const index = groups.findIndex((item) => item.chatId === groupId);
   if (key && value !== "") {
-    if (key === "full") {
-      for (let i in groups[index]?.locks) {
-        if (typeof groups[index]?.locks[i] === "boolean") {
-          groups[index].locks[i] = value;
-        }
-      }
+    if (rule) {
+      groups[index].rules[key] = value;
     } else {
-      groups[index].locks[key] = value;
+      if (key === "full") {
+        for (let i in groups[index]?.locks) {
+          if (typeof groups[index]?.locks[i] === "boolean") {
+            groups[index].locks[i] = value;
+          }
+        }
+      } else {
+        groups[index].locks[key] = value;
+      }
     }
     fs.writeFile("data/groups.json", JSON.stringify(groups), (err) => {
       if (err) {
@@ -156,6 +160,24 @@ function getAndModifyGroupLocks(ctx, key, value, title) {
   return groups[index];
 }
 
+function setWelcomeMsg(ctx) {
+  const message = ctx.message.text;
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  let sessionGroup = fs.readFileSync("data/session.group.json", "utf8");
+  sessionGroup = JSON.parse(sessionGroup);
+  const index = sessionGroup.findIndex((item) => item.userId === ctx.from.id);
+  const groupId = sessionGroup[index].groupId;
+  const groupIndex = groups.findIndex((item) => item.chatId === +groupId);
+  if (groups[groupIndex].admin.includes(ctx.from.id)) {
+    groups[groupIndex].welcomeMsg = message;
+    fs.writeFileSync("data/groups.json", JSON.stringify(groups));
+    ctx.reply("با موفقیت ثبت شد.");
+  } else {
+    ctx.reply("شما ادمین نیستی.");
+  }
+}
+
 module.exports = {
   joinGroup,
   getUserAllGroups,
@@ -163,5 +185,6 @@ module.exports = {
   leaveBotFromGroup,
   selectPanelGroup,
   getAndModifyGroupLocks,
+  setWelcomeMsg,
   limitSendMessageGroup,
 };

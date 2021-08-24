@@ -3,6 +3,7 @@ const {
   joinGroup,
   getAndModifyGroupLocks,
   limitSendMessageGroup,
+  setWelcomeMsg,
 } = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
@@ -67,7 +68,13 @@ bot.start((ctx) => {
                   limitSend: 10,
                   addUser: false,
                 },
+                rules: {
+                  verify: false,
+                  joinMessage: false,
+                },
+                welcomeMsg: "",
               },
+
               (msg) => {
                 ctx.telegram.sendMessage(ctx.message.from.id, msg, inlineMain);
               }
@@ -192,6 +199,10 @@ bot.on("message", (ctx) => {
       if (data[index].payload === "limitSend") {
         limitSendMessageGroup(ctx);
         removeSession("from", ctx.from.id, "limitSend");
+      }
+      if (data[index].payload === "setWelcomeMsg") {
+        setWelcomeMsg(ctx);
+        removeSession("from", ctx.from.id, "setWelcomeMsg");
       }
     }
   });

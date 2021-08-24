@@ -23,29 +23,20 @@ const inlineGroup = (ctx, Method = {}) => {
     [b("حذف از مسدودیت", `unban`)],
     [b("حذف مسدود از همه گروه ها", `unbanallUser`)],
   ];
-
-  let inlineGroupManage = [
-    [b("بازگشت", `backToHome`)],
-    [b("تنظیم پیغام خوش آمد گویی", `lockVoice`)],
-    [b("پاک کردن پیغام عضویت", `lockVoice`)],
-    [b("پاک کردن پیغام تغییر تصویر", `lockVoice`)],
-    [b("پاک کردن پیغام تغییر نام", `lockVoice`)],
-    [b("افزودن تصویر گروه", `lockVoice`)],
-    [b("افزودن نام گروه", `lockVoice`)],
-    [b("حذف نام گروه", `lockVoice`)],
-    [b("افزودن بیو گروه", `lockVoice`)],
-    [b("دریافت لینک گروه", `lockVoice`)],
-    [b("تغییر لینک گروه", `lockVoice`)],
-    [b("تغییر لینک گروه", `lockVoice`)],
-  ];
   let groupKeys = [
     [b("بازگشت", `backToHome`)],
     [b("مسدودها ⭕️", `bans`)],
     [b("قفل گروه 🔒", `lockGroup`)],
     [b("گروه 👥", `group`)],
   ];
-  let group = getAndModifyGroupLocks(ctx, Method?.key, Method?.value);
+  let group = getAndModifyGroupLocks(
+    ctx,
+    Method?.key,
+    Method?.value,
+    Method.rule
+  );
   const locks = group?.locks;
+  const rules = group?.rules;
   let lock = (lock) => {
     return lock ? "✅" : "❌";
   };
@@ -97,6 +88,23 @@ const inlineGroup = (ctx, Method = {}) => {
       b(lock(locks?.addUser), `lockAddUser`),
     ].reverse(),
   ];
+  let inlineGroupManage = [
+    [b("بازگشت", `backToHome`)],
+    [b("تنظیم پیغام خوش آمد گویی", `setWelcomeMessage`)],
+    [
+      b("پیغام عضویت", `deleteJoinMsg`),
+      b(lock(rules?.joinMessage), `deleteJoinMsg`),
+    ].reverse(),
+    [b("تغییر تصویر گروه", `groupChangeImage`)],
+    [b("تغییر نام گروه", `groupChangeName`)],
+    [b("تغییر بیو گروه", `groupChangeBio`)],
+    [b("دریافت لینک گروه", `groupGetInviteLink`)],
+    [b("تغییر لینک گروه", `groupChangeInviteLink`)],
+    [
+      b("تایید دومرحله اعضا", `verifyNewUsers`),
+      b(lock(rules?.verify), `verifyNewUsers`),
+    ].reverse(),
+  ];
   return {
     groupKeys: Markup.inlineKeyboard(groupKeys),
     inlineGroupLocks: Markup.inlineKeyboard(inlineGroupLocks),
@@ -109,6 +117,7 @@ function inlineGroupAction(ctx) {
   const key = ctx.match[0];
   let group = getAndModifyGroupLocks(ctx);
   const locks = group?.locks;
+  const rules = group?.rules;
   let message =
     "قربان! کافیه پیامشو فوروارد کنی همینجا یا آیدی عددیشو برام بفرستی.";
   if (key === "viewBanList") {
@@ -161,47 +170,67 @@ function inlineGroupAction(ctx) {
     ctx.reply(message);
   } else if (key === "fullLockGroup") {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineGroup(ctx, { key: "full", value: !locks.full })
-        .inlineGroupLocks.reply_markup.inline_keyboard,
+      inline_keyboard: inlineGroup(ctx, {
+        key: "full",
+        value: !locks.full,
+        rule: false,
+      }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "timingLockGroup") {
   } else if (key === "enableFilters") {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineGroup(ctx, { key: "filter", value: !locks.filter })
-        .inlineGroupLocks.reply_markup.inline_keyboard,
+      inline_keyboard: inlineGroup(ctx, {
+        key: "filter",
+        value: !locks.filter,
+        rule: false,
+      }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "lockMessage") {
     ctx.editMessageReplyMarkup({
       inline_keyboard: inlineGroup(ctx, {
         key: "message",
         value: !locks.message,
+        rule: false,
       }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "lockVoice") {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineGroup(ctx, { key: "voice", value: !locks.voice })
-        .inlineGroupLocks.reply_markup.inline_keyboard,
+      inline_keyboard: inlineGroup(ctx, {
+        key: "voice",
+        value: !locks.voice,
+        rule: false,
+      }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "lockVideo") {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineGroup(ctx, { key: "video", value: !locks.video })
-        .inlineGroupLocks.reply_markup.inline_keyboard,
+      inline_keyboard: inlineGroup(ctx, {
+        key: "video",
+        value: !locks.video,
+        rule: false,
+      }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "lockPhoto") {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineGroup(ctx, { key: "photo", value: !locks.photo })
-        .inlineGroupLocks.reply_markup.inline_keyboard,
+      inline_keyboard: inlineGroup(ctx, {
+        key: "photo",
+        value: !locks.photo,
+        rule: false,
+      }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "lockFile") {
     ctx.editMessageReplyMarkup({
-      inline_keyboard: inlineGroup(ctx, { key: "file", value: !locks.file })
-        .inlineGroupLocks.reply_markup.inline_keyboard,
+      inline_keyboard: inlineGroup(ctx, {
+        key: "file",
+        value: !locks.file,
+        rule: false,
+      }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "lockSticker") {
     ctx.editMessageReplyMarkup({
       inline_keyboard: inlineGroup(ctx, {
         key: "sticker",
         value: !locks.sticker,
+        rule: false,
       }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "lockGif") {
@@ -209,6 +238,7 @@ function inlineGroupAction(ctx) {
       inline_keyboard: inlineGroup(ctx, {
         key: "gif",
         value: !locks.gif,
+        rule: false,
       }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
   } else if (key === "limitSend") {
@@ -229,13 +259,51 @@ function inlineGroupAction(ctx) {
       inline_keyboard: inlineGroup(ctx, {
         key: "addUser",
         value: !locks.addUser,
+        rule: false,
       }).inlineGroupLocks.reply_markup.inline_keyboard,
+    });
+  } else if (key === "setWelcomeMessage") {
+    addSession(
+      {
+        from: ctx.from.id,
+      },
+      "setWelcomeMsg"
+    );
+    ctx.reply(`شما میتونید برای اعضای جدید گروه پیغام خوش آمد گویی درنظر بگیرید بصورت پیشفرض این غیر فعال می باشد.
+همچنین می توانید برای اشاره به کاربر در پیام خود از واژه های زیر استفاده کنید:
+FIRST_NAME
+LAST_NAME
+USERNAME
+و برای اشاره به نام گروه میتوانید از واژه زیر استفاده کنید:
+GROUP_NAME
+
+به عنوان مثال: 
+سلام FIRST_NAME به گروه GROUP_NAME خوش اومدی.
+
+برای غیر فعال کردن کافیه که پیغام خوش آمد گویی رو خالی تنظیم کنید.
+    `);
+  } else if (key === "deleteJoinMsg") {
+    ctx.editMessageReplyMarkup({
+      inline_keyboard: inlineGroup(ctx, {
+        key: "joinMessage",
+        value: !rules.joinMessage,
+        rule: true,
+      }).inlineGroupManage.reply_markup.inline_keyboard,
+    });
+  } else if (key === "groupChangeImage") {
+  } else if (key === "groupChangeName") {
+  } else if (key === "groupChangeBio") {
+  } else if (key === "groupGetInviteLink") {
+  } else if (key === "groupChangeInviteLink") {
+  } else if (key === "verifyNewUsers") {
+    ctx.editMessageReplyMarkup({
+      inline_keyboard: inlineGroup(ctx, {
+        key: "verify",
+        value: !rules?.verify,
+        rule: true,
+      }).inlineGroupManage.reply_markup.inline_keyboard,
     });
   }
 }
-
-//alert darim
-//ersal msg be user darim
-//masdodiat darim
 
 module.exports = { inlineGroup, inlineGroupAction };
