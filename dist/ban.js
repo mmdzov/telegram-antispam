@@ -9,12 +9,15 @@ async function handleBanDetail(ctx, mode = "") {
     .join("");
   console.log(mode);
   const userId = message?.trim().length >= 8 ? +message.trim() : false;
-  let admins = await bot.telegram.getChatAdministrators(ctx.message.chat.id);
-  if (
-    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
-  ) {
-    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی.`);
-    return;
+  if (ctx.chat.type === "supergorup") {
+    let admins = await bot.telegram.getChatAdministrators(ctx.message.chat.id);
+    if (
+      admins.filter((admin) => admin.user.id === ctx.message.from.id).length ===
+      0
+    ) {
+      ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی.`);
+      return;
+    }
   }
   if (userId) {
     const user = await bot.telegram.getChat(+userId);
@@ -125,20 +128,24 @@ ${mappedBans.join("\n")}
 
 async function clearBanList(ctx) {
   const userId = ctx.from.id;
-  const admins = await ctx.getChatAdministrators(ctx.chat.id);
-  if (
-    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
-  ) {
-    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
-    return;
-  }
+
   let groupId = "";
   if (ctx.chat.type !== "supergroup") {
-    const data = await fs.readFileSync("data/session.group.json", "utf8");
+    let data = await fs.readFileSync("data/session.group.json", "utf8");
     data = JSON.parse(data);
     const groupIndex = data.findIndex((item) => item.userId === userId);
     groupId = data[groupIndex].groupId;
-  } else groupId = ctx.chat.id;
+  } else {
+    const admins = await ctx.getChatAdministrators(ctx.chat.id);
+    if (
+      admins.filter((admin) => admin.user.id === ctx.message.from.id).length ===
+      0
+    ) {
+      ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
+      return;
+    }
+    groupId = ctx.chat.id;
+  }
   let groups = await fs.readFileSync("data/groups.json", "utf8");
   groups = JSON.parse(groups);
   const index = groups.findIndex((item) => item.chatId === +groupId);
@@ -157,12 +164,15 @@ async function clearBanList(ctx) {
 }
 
 async function clearBanListAll(ctx) {
-  const admins = await ctx.getChatAdministrators(ctx.chat.id);
-  if (
-    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
-  ) {
-    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
-    return;
+  if (ctx.chat.type === "supergroup") {
+    const admins = await ctx.getChatAdministrators(ctx.chat.id);
+    if (
+      admins.filter((admin) => admin.user.id === ctx.message.from.id).length ===
+      0
+    ) {
+      ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
+      return;
+    }
   }
   const userId = ctx.from.id;
   let data = await fs.readFileSync("data/groups.json", "utf8");
@@ -266,7 +276,7 @@ const handleBan = (ctx, mode = "") => {
               ctx.unbanChatMember(target.chat.id, target.from.id);
               removeSession("from", ctx.from.id, "unbanUser");
             }
-            ctx.reply(`کاربر ${target.from.id} از گروه ${mode} مسدود شد.`);
+            ctx.reply(`کاربر ${target.from.id} از گروه ${mode} مسدود شد.`); //!bug repeat message
           }
         });
       } else {
@@ -376,12 +386,15 @@ function handleBanUserWithKey(ctx, type = "", mode = "") {
 }
 
 async function banallGroupFromReply(ctx, mode) {
-  const admins = await ctx.getChatAdministrators(ctx.chat.id);
-  if (
-    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
-  ) {
-    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
-    return;
+  if (ctx.chat.type === "supergroup") {
+    const admins = await ctx.getChatAdministrators(ctx.chat.id);
+    if (
+      admins.filter((admin) => admin.user.id === ctx.message.from.id).length ===
+      0
+    ) {
+      ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
+      return;
+    }
   }
   let user = {};
   try {
@@ -427,74 +440,74 @@ async function banallGroupFromReply(ctx, mode) {
   }
 }
 
-function handleBanallUserWithKey(ctx, forwardedId = "") {
+async function handleBanallUserWithKey(ctx, forwardedId = "") {
   const hasUserId = ctx.message.text.match(/[0-9]/g)?.join("");
-
-  fs.readFile("data/sessions.json", "utf8", (err, sessions) => {
+  let sessions = await fs.readFileSync("data/sessions.json", "utf8");
+  sessions = JSON.parse(sessions);
+  const sessionIndex = sessions.findIndex(
+    (item) => item.body.from === ctx.from.id
+  );
+  const payloadType = sessions[sessionIndex]?.payload;
+  let kickedFromChatCount = 0;
+  let unbanallCount = 0;
+  fs.readFile("data/groups.json", "utf8", async (err, groups) => {
     if (err) console.log(err);
-    sessions = JSON.parse(sessions);
-    const sessionIndex = sessions.findIndex(
-      (item) => item.body.from === ctx.from.id
+    groups = JSON.parse(groups);
+    let user = await bot.telegram.getChat(
+      forwardedId ? +forwardedId : +hasUserId
     );
-    const payloadType = sessions[sessionIndex]?.payload;
-    let kickedFromChatCount = 0;
-    let unbanallCount = 0;
-    fs.readFile("data/groups.json", "utf8", async (err, groups) => {
-      if (err) console.log(err);
-      groups = JSON.parse(groups);
-      let user = await bot.telegram.getChat(
-        forwardedId ? +forwardedId : +hasUserId
-      );
-      groups = groups.map((item, index, arr) => {
-        if (item.admin.includes(ctx.from.id)) {
-          const banItem = {
-            name: user?.first_name,
-            username: "@" + user?.username,
-            id: user.id,
-          };
-          if (item?.banlist?.length >= 0) {
-            if (payloadType === "banallUser") {
-              item.banlist.push(banItem);
-            } else if (payloadType === "unbanallUser") {
-              const filteredItem = item.banlist.filter(
-                (banUser) => banUser.id !== user.id
-              );
-              if (filteredItem.length > 0) {
-                item.banlist = filteredItem;
-                unbanallCount++;
-              }
-            }
-          } else {
-            if (payloadType === "banallUser") {
-              item.banlist = [banItem];
-            }
-          }
+    groups = groups.map((item, index, arr) => {
+      if (item.admin.includes(ctx.from.id)) {
+        const banItem = {
+          name: user?.first_name,
+          username: "@" + user?.username,
+          id: user.id,
+        };
+        if (item?.banlist?.length >= 0) {
           if (payloadType === "banallUser") {
-            bot.telegram.kickChatMember(item.chatId, user.id);
-            kickedFromChatCount++;
+            item.banlist.push(banItem);
           } else if (payloadType === "unbanallUser") {
-            bot.telegram.unbanChatMember(item.chatId, user.id);
+            const filteredItem = item.banlist.filter(
+              (banUser) => banUser.id !== user.id
+            );
+            if (filteredItem.length > 0) {
+              item.banlist = filteredItem;
+              unbanallCount++;
+            }
           }
-          return item;
+        } else {
+          if (payloadType === "banallUser") {
+            item.banlist = [banItem];
+          }
+        }
+        if (
+          payloadType === "banallUser" &&
+          item.banlist.filter((item) => item.id === user.id).length === 0
+        ) {
+          bot.telegram.kickChatMember(item.chatId, user.id);
+          kickedFromChatCount++;
+        } else if (payloadType === "unbanallUser") {
+          bot.telegram.unbanChatMember(item.chatId, user.id);
         }
         return item;
-      });
-      fs.writeFile("data/groups.json", JSON.stringify(groups), (err) => {
-        if (err) console.log(err);
-        if (payloadType === "banallUser") {
-          if (kickedFromChatCount > 0) {
-            ctx.reply("کاربر از تمام گروه ها مسدود شد قربان");
-          } else {
-            ctx.reply("کاربر قبلا از همه گروه ها مسدود شده بود قربان");
-          }
-        } else if (payloadType === "unbanallUser") {
-          if (unbanallCount > 0) {
-            ctx.reply("کاربر از تمام گروه ها حذف مسدود شد قربان");
-          } else {
-            ctx.reply("کاربر قبلا از تمام گروه ها حذف مسدود شده قربان");
-          }
+      }
+      return item;
+    });
+    fs.writeFile("data/groups.json", JSON.stringify(groups), (err) => {
+      if (err) console.log(err);
+      if (payloadType === "banallUser") {
+        if (kickedFromChatCount > 0) {
+          ctx.reply("کاربر از تمام گروه ها مسدود شد قربان");
+        } else {
+          ctx.reply("کاربر قبلا از همه گروه ها مسدود شده بود قربان");
         }
-      });
+      } else if (payloadType === "unbanallUser") {
+        if (unbanallCount > 0) {
+          ctx.reply("کاربر از تمام گروه ها حذف مسدود شد قربان");
+        } else {
+          ctx.reply("کاربر قبلا از تمام گروه ها حذف مسدود شده قربان");
+        }
+      }
     });
   });
 }
