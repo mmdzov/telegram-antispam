@@ -24,13 +24,14 @@ function addMessageLog(ctx, messageId) {
   }
   fs.writeFileSync("data/msglog.json", JSON.stringify(logs));
 }
+
 function hasLastMsgId(ctx, messageId) {
   let logs = fs.readFileSync("data/msglog.json", "utf8");
   logs = JSON.parse(logs);
   const index = logs.findIndex((item) => item.userId === ctx.from.id);
   let lastMsgId = logs[index].list.slice(-1)[0];
-  console.log(lastMsgId);
   if (lastMsgId === messageId) return true;
   return false;
 }
+
 module.exports = { addMessageLog, hasLastMsgId };

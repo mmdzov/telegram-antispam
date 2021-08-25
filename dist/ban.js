@@ -2,6 +2,59 @@ const fs = require("fs");
 const { removeSession } = require("../utils/util_session");
 const bot = require("../config/requires");
 
+async function handleBanDetail(ctx, mode = "") {
+  const message = ctx.message.text
+    .split(mode === "" ? "مسدود" : "حذف مسدود")
+    .filter((item, index) => index !== 0)
+    .join("");
+  console.log(mode);
+  const userId = message?.trim().length >= 8 ? +message.trim() : false;
+  let admins = await bot.telegram.getChatAdministrators(ctx.message.chat.id);
+  if (
+    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
+  ) {
+    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی.`);
+    return;
+  }
+  if (userId) {
+    const user = await bot.telegram.getChat(+userId);
+    let banItem = {
+      name: user?.first_name ?? "",
+      lastName: user?.last_name ?? "",
+      username: "@" + user?.username ?? "",
+      id: user.id,
+    };
+    let groups = fs.readFileSync("data/groups.json", "utf8");
+    groups = JSON.parse(groups);
+    let index = groups.findIndex((item) => item.chatId === ctx.chat.id);
+    if (
+      groups[index].banlist.filter((item) => item.id === +userId).length > 0
+    ) {
+      ctx.reply(`کاربر ${user.first_name} قبلا از گروه مسدود شده قربان`);
+      return;
+    }
+    if (mode === "") {
+      if (admins.some((admin) => admin.user.id === user.id)) {
+        ctx.reply(`ادمین را نمی توانم مسدود کنم قربان.`);
+        return;
+      }
+      groups[index].banlist.push(banItem);
+      ctx.kickChatMember(ctx.chat.id, user.id);
+    } else {
+      groups[index].banlist = groups[index].banlist.filter(
+        (item) => item.id !== user.id
+      );
+      ctx.unbanChatMember(ctx.chat.id, user.id);
+    }
+    fs.writeFileSync("data/groups.json", JSON.stringify(groups));
+    if (mode === "") {
+      ctx.reply(`کاربر ${user.first_name} مسدود شد`);
+    } else {
+      ctx.reply(`کاربر ${user.first_name} حذف مسدود شد`);
+    }
+  }
+}
+
 function viewBanUsers(ctx) {
   const userId = ctx.from.id;
   fs.readFile("data/groups.json", "utf8", (err, data) => {
@@ -70,59 +123,69 @@ ${mappedBans.join("\n")}
   });
 }
 
-function clearBanList(ctx) {
+async function clearBanList(ctx) {
   const userId = ctx.from.id;
-  fs.readFile("data/session.group.json", "utf8", (err, data) => {
-    if (err) console.log(err);
+  const admins = await ctx.getChatAdministrators(ctx.chat.id);
+  if (
+    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
+  ) {
+    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
+    return;
+  }
+  let groupId = "";
+  if (ctx.chat.type !== "supergroup") {
+    const data = await fs.readFileSync("data/session.group.json", "utf8");
     data = JSON.parse(data);
     const groupIndex = data.findIndex((item) => item.userId === userId);
-    const groupId = data[groupIndex].groupId;
-    fs.readFile("data/groups.json", "utf8", (err, groups) => {
-      if (err) console.log(err);
-      groups = JSON.parse(groups);
-      const index = groups.findIndex((item) => item.chatId === +groupId);
-      if (groups[index].banlist.length === 0) {
-        ctx.reply("لیست مسدودی ها خالی است قربان");
-        return;
-      }
-      groups[index].map((item) => {
-        item?.banlist.map(({ id }) => {
-          ctx.unbanChatMember(item.chatId, id);
-        });
-      });
-      groups[index].banlist = [];
-      fs.writeFile("data/groups.json", JSON.stringify(groups), (err) => {
-        if (err) console.log(err);
-        else ctx.reply("لیست مسدودی ها خالی شد");
-      });
-    });
+    groupId = data[groupIndex].groupId;
+  } else groupId = ctx.chat.id;
+  let groups = await fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  const index = groups.findIndex((item) => item.chatId === +groupId);
+  if (groups[index].banlist.length === 0) {
+    ctx.reply("لیست مسدودی ها خالی است قربان");
+    return;
+  }
+  groups[index]?.banlist.map(({ id }) => {
+    ctx.unbanChatMember(groups[index].chatId, id);
+  });
+  groups[index].banlist = [];
+  fs.writeFile("data/groups.json", JSON.stringify(groups), (err) => {
+    if (err) console.log(err);
+    else ctx.reply("لیست مسدودی ها خالی شد");
   });
 }
-function clearBanListAll(ctx) {
+
+async function clearBanListAll(ctx) {
+  const admins = await ctx.getChatAdministrators(ctx.chat.id);
+  if (
+    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
+  ) {
+    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
+    return;
+  }
   const userId = ctx.from.id;
-  fs.readFile("data/groups.json", "utf8", (err, data) => {
-    if (err) console.log(err);
-    data = JSON.parse(data);
-    const banlistExist = data.filter(
-      (item) => item.admin.includes(userId) && item?.banlist?.length > 0 && item
-    );
-    if (banlistExist.length === 0) {
-      ctx.reply("لیست همه مسدودی ها خالی است قربان");
-      return;
+  let data = await fs.readFileSync("data/groups.json", "utf8");
+  data = JSON.parse(data);
+  const banlistExist = data.filter(
+    (item) => item.admin.includes(userId) && item?.banlist?.length > 0 && item
+  );
+  if (banlistExist.length === 0) {
+    ctx.reply("لیست همه مسدودی ها خالی است قربان");
+    return;
+  }
+  const mapped = data.map((item) => {
+    if (item.admin.includes(userId)) {
+      item?.banlist.map(({ id }) => {
+        ctx.unbanChatMember(item.chatId, id);
+      });
+      item.banlist = [];
     }
-    const mapped = data.map((item) => {
-      if (item.admin.includes(userId)) {
-        item?.banlist.map(({ id }) => {
-          ctx.unbanChatMember(item.chatId, id);
-        });
-        item.banlist = [];
-      }
-      return item;
-    });
-    fs.writeFile("data/groups.json", JSON.stringify(mapped), (err) => {
-      if (err) console.log(err);
-      else ctx.reply("لیست مسدودی تمام گروه ها خالی شد");
-    });
+    return item;
+  });
+  fs.writeFile("data/groups.json", JSON.stringify(mapped), (err) => {
+    if (err) console.log(err);
+    else ctx.reply("لیست مسدودی تمام گروه ها خالی شد");
   });
 }
 
@@ -153,7 +216,10 @@ function banUserSession(ctx, body = {}, payload = "", prevPayload = []) {
 
 const handleBan = (ctx, mode = "") => {
   const target = ctx.update.message?.reply_to_message;
-  if (!target) return;
+  if (!target) {
+    handleBanDetail(ctx, mode);
+    return;
+  }
   let banItem = {
     name: target.from?.first_name ?? "",
     lastName: target.from?.last_name ?? "",
@@ -309,6 +375,58 @@ function handleBanUserWithKey(ctx, type = "", mode = "") {
   }
 }
 
+async function banallGroupFromReply(ctx, mode) {
+  const admins = await ctx.getChatAdministrators(ctx.chat.id);
+  if (
+    admins.filter((admin) => admin.user.id === ctx.message.from.id).length === 0
+  ) {
+    ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی`);
+    return;
+  }
+  let user = {};
+  try {
+    console.log(ctx.message?.reply_to_message?.from?.id);
+    user = await bot.telegram.getChat(
+      ctx.message?.reply_to_message?.from?.id
+        ? ctx.message?.reply_to_message?.from?.id
+        : +ctx.message.text
+            .trim()
+            .split(/[^0-9]/g)
+            .join("")
+    );
+  } catch (e) {
+    console.log(e);
+    ctx.reply("کاربر پیدا نشد قربان.");
+  }
+  let banItem = {
+    name: user?.first_name ?? "",
+    lastName: user?.last_name ?? "",
+    username: "@" + user?.username ?? "",
+    id: user.id,
+  };
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  let kickedCount = 0;
+  groups = groups.map((item) => {
+    if (
+      item.admin.includes(ctx.message.from.id) &&
+      item.banlist.filter((item) => item.id === user.id).length === 0
+    ) {
+      bot.telegram.kickChatMember(item.chatId, user.id);
+      item.banlist.push(banItem);
+      kickedCount++;
+      return item;
+    }
+    return item;
+  });
+  if (kickedCount > 0) {
+    await fs.writeFileSync("data/groups.json", JSON.stringify(groups));
+    ctx.reply(`کاربر ${user.id} از تمام گروه ها مسدود شد`);
+  } else {
+    ctx.reply(`کاربر ${user.id} قبلا از تمام گروه ها مسدود شده قربان`);
+  }
+}
+
 function handleBanallUserWithKey(ctx, forwardedId = "") {
   const hasUserId = ctx.message.text.match(/[0-9]/g)?.join("");
 
@@ -386,7 +504,7 @@ function banUserFromReply(ctx) {
 }
 
 function unbanUserFromReply(ctx) {
-  handleBan(ctx, "حدف");
+  handleBan(ctx, "حذف");
 }
 
 module.exports = {
@@ -397,5 +515,7 @@ module.exports = {
   unbanUserFromReply,
   viewBanUsersAll,
   clearBanList,
+  handleBan,
   clearBanListAll,
+  banallGroupFromReply,
 };

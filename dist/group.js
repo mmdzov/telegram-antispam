@@ -1,8 +1,10 @@
 const fs = require("fs");
-const { Scenes } = require("telegraf");
+const { Scenes, Markup } = require("telegraf");
 const bot = require("../config/requires");
 const { removeSession } = require("../utils/util_session");
-
+const sureInlineKey = Markup.inlineKeyboard([
+  [Markup.button.callback("فهمیدم", "acceptAndDelete")],
+]);
 async function joinGroup(newData, cb) {
   try {
     let data = await fs.readFileSync("data/groups.json", {
@@ -234,18 +236,18 @@ function changeGroupInviteLink(ctx) {
   const index = sessionGroups.findIndex((item) => item.userId === ctx.from.id);
   const groupId = sessionGroups[index]?.groupId;
   ctx.telegram.createChatInviteLink(groupId).then((item) => {
-    console.log(item);
     ctx.reply(`لینک گروه تغییر کرد. لینک جدید:
 
 ${item.invite_link}`);
   });
 }
 
-function filterGroupMessage(ctx) {
+async function filterGroupMessage(ctx) {
   const message = ctx.message?.text;
   let groups = fs.readFileSync("data/groups.json", "utf8");
   groups = JSON.parse(groups);
   const index = groups.findIndex((item) => item.chatId === ctx.chat.id);
+  if (await userHasAdmin(ctx)) return;
   if (groups[index].locks.filter) {
     let filters = fs.readFileSync("data/filters.json", "utf8");
     filters = JSON.parse(filters);
@@ -263,6 +265,32 @@ function filterGroupMessage(ctx) {
       });
     }
   }
+}
+
+async function userHasAdmin(ctx) {
+  let admins = await ctx.getChatAdministrators();
+  let hasAdmin = await admins.some((a) => a.user.id === ctx.from.id);
+  return hasAdmin;
+}
+
+async function aboutUser(ctx, mode = "") {
+  if (ctx.message.text.trim() !== mode) return;
+  const replied = ctx.message?.reply_to_message;
+  const user = await bot.telegram.getChat(
+    replied ? replied.from.id : ctx.message.from.id
+  );
+  let aboutTemp = [
+    `آیدی عددی : ${user.id}`,
+    `نام : ${user.first_name}`,
+    `نام کاربری : ${"@" + user.username}`,
+    `${user?.bio ? `بیو : ${user.bio}` : ""}`,
+  ];
+
+  bot.telegram.sendMessage(ctx.chat.id, `${aboutTemp.join("\n\n")}`, {
+    reply_markup: {
+      inline_keyboard: sureInlineKey.reply_markup.inline_keyboard,
+    },
+  });
 }
 
 function deleteMessageFromGroup(ctx) {
@@ -339,5 +367,6 @@ module.exports = {
   selectPanelGroup,
   getAndModifyGroupLocks,
   setWelcomeMsg,
+  aboutUser,
   limitSendMessageGroup,
 };

@@ -10,6 +10,7 @@ const {
   filterGroupMessage,
   deleteMessageFromGroup,
   getGroupWelcomeMessage,
+  aboutUser,
 } = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
@@ -30,6 +31,12 @@ const {
   banUserFromReply,
   unbanUserFromReply,
   handleBanUserWithKey,
+  viewBanUsers,
+  viewBanUsersAll,
+  handleBan,
+  clearBanList,
+  clearBanListAll,
+  banallGroupFromReply,
 } = require("./dist/ban.js");
 const { removeSession } = require("./utils/util_session.js");
 const { addMessageLog, hasLastMsgId } = require("./utils/message.log.js");
@@ -108,7 +115,6 @@ bot.start((ctx) => {
         .then((item) => {
           addMessageLog(ctx, item.message_id);
         });
-      // bot.telegram.deleteMessage(ctx.chat.id,)
     } else {
       ctx.reply(
         `
@@ -206,7 +212,7 @@ bot.hears("مسدود", (ctx, next) => {
   return next();
 });
 bot.hears("مسدود همه", (ctx, next) => {
-  unbanUserFromReply(ctx);
+  banallGroupFromReply(ctx);
   return next();
 });
 bot.hears("حذف مسدود", (ctx, next) => {
@@ -215,6 +221,30 @@ bot.hears("حذف مسدود", (ctx, next) => {
 });
 bot.hears("حذف مسدود همه", (ctx, next) => {
   unbanUserFromReply(ctx);
+  return next();
+});
+bot.hears("لیست مسدود", (ctx, next) => {
+  viewBanUsers(ctx);
+  return next();
+});
+bot.hears("لیست مسدود همه", (ctx, next) => {
+  viewBanUsersAll(ctx);
+  return next();
+});
+bot.hears("درباره", (ctx, next) => {
+  aboutUser(ctx, "درباره");
+  return next();
+});
+bot.hears("من", (ctx, next) => {
+  aboutUser(ctx, "من");
+  return next();
+});
+bot.hears("پاکسازی مسدود همه", (ctx, next) => {
+  clearBanListAll(ctx);
+  return next();
+});
+bot.hears("پاکسازی مسدود", (ctx, next) => {
+  clearBanList(ctx);
   return next();
 });
 
@@ -264,8 +294,6 @@ bot.on("message", (ctx, next) => {
   return next();
 });
 bot.on("message", (ctx) => {
-  console.log();
-  console.log();
   if (ctx.message?.left_chat_member) {
     ctx.deleteMessage(ctx.message.message_id);
   } else if (ctx.message?.new_chat_member) {
@@ -274,6 +302,7 @@ bot.on("message", (ctx) => {
   }
   // console.log(ctx.message);
   //handle filtering
+  const hasReplied = ctx.message?.reply_to_message;
   const message = ctx.message.text;
   if (ctx.chat.type === "supergroup") {
     filterGroupMessage(ctx);
@@ -287,6 +316,18 @@ bot.on("message", (ctx) => {
       addFilter(ctx, message);
     } else if (message.includes("حذف")) {
       deleteMessageFromGroup(ctx);
+    }
+    if (!hasReplied) {
+      if (message.includes("حذف مسدود همه")) {
+        handleBan(ctx, "حذف مسدود همه");
+        return;
+      } else if (message.includes("حذف مسدود")) {
+        handleBan(ctx, "حذف");
+        return;
+      } else if (message.includes("مسدود")) {
+        handleBan(ctx, "");
+        return;
+      }
     }
   }
 });
