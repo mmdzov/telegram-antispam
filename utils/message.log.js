@@ -7,16 +7,11 @@ function addMessageLog(ctx, messageId) {
   const logIndex = logs.findIndex((item) => item.userId === ctx.from.id);
   if (logs[logIndex]?.list) {
     logs[logIndex].list.map((item) => {
-      bot.telegram
-        .editMessageText(
-          ctx.chat.id,
-          item,
-          ctx.inlineMessageId,
-          "دستور بده قربان"
-        )
-        .catch((e) => {
-        //   console.log(e);
-        });
+      const hasGroup =
+        ctx.chat.type === "supergroup" ? ctx.from.id : ctx.chat.id;
+      bot.telegram.deleteMessage(hasGroup, item).catch((e) => {
+        //   console.log(e)
+      });
     });
     logs[logIndex].list = [
       logs[logIndex].list[logs[logIndex].list.length - 1],
@@ -34,6 +29,7 @@ function hasLastMsgId(ctx, messageId) {
   logs = JSON.parse(logs);
   const index = logs.findIndex((item) => item.userId === ctx.from.id);
   let lastMsgId = logs[index].list.slice(-1)[0];
+  console.log(lastMsgId);
   if (lastMsgId === messageId) return true;
   return false;
 }

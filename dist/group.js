@@ -274,7 +274,7 @@ function deleteMessageFromGroup(ctx) {
   } else {
     //
   }
-  const userHasAdmin = groups[groupIndex].admin.includes(ctx.message.from.id);
+  const userHasAdmin = groups[groupIndex]?.admin?.includes(ctx.message.from.id);
   if (!userHasAdmin) return;
   let message = ctx.message.text.match(/[0-9]/g).join("");
   let b = 0;

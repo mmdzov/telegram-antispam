@@ -90,7 +90,8 @@ bot.start((ctx) => {
                 ctx.telegram
                   .sendMessage(ctx.message.from.id, msg, inlineMain)
                   .then((item) => {
-                    // addMessageLog(ctx, item.message_id);
+                    // console.log(item.message_id)
+                    addMessageLog(ctx, item.message_id);
                   });
               }
             );
@@ -142,7 +143,7 @@ bot.action(/.+/, (ctx, next) => {
     ctx.update.callback_query.message.message_id
   );
 
-  //check message logs
+  //!check message logs
   if (!lastMsgId) return;
   let group = getAndModifyGroupLocks(ctx);
   const locks = group?.locks;
