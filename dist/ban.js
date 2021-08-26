@@ -307,6 +307,65 @@ const handleBan = (ctx, mode = "") => {
   }
 };
 
+async function handleBanall(ctx, mode = "") {
+  const userId = +ctx.message.text
+    .trim()
+    .split(/[^0-9]/g)
+    .join("");
+  if (ctx.chat.type === "supergroup") {
+    let admins = await bot.telegram.getChatAdministrators(ctx.chat.id);
+    if (admins.filter((admin) => admin.user.id === ctx.from.id).length === 0) {
+      ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی.`);
+      return;
+    }
+  }
+  let banCount = 0;
+  let unbanCount = 0;
+  const user = await bot.telegram.getChat(userId);
+  const banItem = {
+    name: user?.first_name,
+    username: "@" + user?.username,
+    id: user.id,
+  };
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  groups = groups.map((item) => {
+    if (item.admin.includes(ctx.from.id)) {
+      if (mode === "") {
+        if (item.banlist.filter((ban) => ban.id === user.id).length === 0) {
+          item.banlist.push(banItem);
+          bot.telegram.kickChatMember(item.chatId, user.id);
+          banCount++;
+        }
+        //! admin remove nmishe ... shart gozashte she htmn
+      } else {
+        if (item.banlist.filter((item) => item.id === user.id).length > 0) {
+          item.banlist = item.banlist.filter((ban) => ban.id !== user.id);
+          bot.telegrarm.unbanChatMember(item.chatId, user.id);
+          unbanCount++;
+        }
+      }
+      return item;
+    }
+    return item;
+  });
+  if (mode === "") {
+    if (banCount > 0) {
+      fs.writeFileSync("data/groups.json", JSON.stringify(groups));
+      ctx.reply(`کاربر ${user.id} از تمام گروه ها مسدود شد.`);
+    } else {
+      ctx.reply(`کاربر ${user.id} قبلا از تمام گروه ها مسدود شده قربان.`);
+    }
+  } else {
+    if (unbanCount > 0) {
+      fs.writeFileSync("data/groups.json", JSON.stringify(groups));
+      ctx.reply(`کاربر ${user.id} از تمام گروه ها حذف مسدود شد.`);
+    } else {
+      ctx.reply(`کاربر ${user.id} قبلا از تمام گروه ها حذف مسدود شده قربان.`);
+    }
+  }
+}
+
 const handleBanWithKey = (ctx, uid = "", type = "") => {
   const hasUserId = ctx.message.text.match(/[0-9]/g)?.join("");
   bot.telegram
@@ -577,6 +636,7 @@ module.exports = {
   viewBanUsersAll,
   unbanallUserFromReply,
   clearBanList,
+  handleBanall,
   handleBan,
   clearBanListAll,
   banallGroupFromReply,

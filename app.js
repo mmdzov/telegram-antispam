@@ -38,6 +38,7 @@ const {
   clearBanListAll,
   banallGroupFromReply,
   unbanallUserFromReply,
+  handleBanall,
 } = require("./dist/ban.js");
 const { removeSession } = require("./utils/util_session.js");
 const { addMessageLog, hasLastMsgId } = require("./utils/message.log.js");
@@ -310,7 +311,10 @@ bot.on("message", (ctx) => {
   }
   if (!hasReplied) {
     if (message.includes("حذف مسدود همه")) {
-      handleBan(ctx, "حذف مسدود همه");
+      handleBanall(ctx, "حذف مسدود همه");
+      return;
+    } else if (message.includes("مسدود همه")) {
+      handleBanall(ctx, "");
       return;
     } else if (message.includes("حذف مسدود")) {
       handleBan(ctx, "حذف");
