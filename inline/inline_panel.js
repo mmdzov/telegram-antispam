@@ -1,5 +1,9 @@
 const { Markup } = require("telegraf");
-const { getUserAllGroups, selectPanelGroup } = require("../dist/group.js");
+const {
+  getUserAllGroups,
+  selectPanelGroup,
+  deletePanelGroup,
+} = require("../dist/group.js");
 const { callback: b } = Markup.button;
 
 const inlinePanel = (userId) => {
@@ -18,7 +22,7 @@ const inlinePanel = (userId) => {
 function inlinePanelAction(ctx) {
   const key = ctx.match[0];
   if (key === "backToHome") {
-    selectPanelGroup(ctx);
+    deletePanelGroup(ctx);
   }
   if (key.includes("manageGroup")) {
     selectPanelGroup(ctx, key.match(/[0-9\-]/g).join(""));

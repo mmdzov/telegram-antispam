@@ -37,6 +37,7 @@ const {
   clearBanList,
   clearBanListAll,
   banallGroupFromReply,
+  unbanallUserFromReply,
 } = require("./dist/ban.js");
 const { removeSession } = require("./utils/util_session.js");
 const { addMessageLog, hasLastMsgId } = require("./utils/message.log.js");
@@ -220,7 +221,7 @@ bot.hears("حذف مسدود", (ctx, next) => {
   return next();
 });
 bot.hears("حذف مسدود همه", (ctx, next) => {
-  unbanUserFromReply(ctx);
+  unbanallUserFromReply(ctx);
   return next();
 });
 bot.hears("لیست مسدود", (ctx, next) => {
@@ -307,6 +308,18 @@ bot.on("message", (ctx) => {
   if (ctx.chat.type === "supergroup") {
     filterGroupMessage(ctx);
   }
+  if (!hasReplied) {
+    if (message.includes("حذف مسدود همه")) {
+      handleBan(ctx, "حذف مسدود همه");
+      return;
+    } else if (message.includes("حذف مسدود")) {
+      handleBan(ctx, "حذف");
+      return;
+    } else if (message.includes("مسدود")) {
+      handleBan(ctx, "");
+      return;
+    }
+  }
   if (message) {
     if (message.includes("!فیلتر")) {
       removeFilter(ctx, message);
@@ -316,18 +329,6 @@ bot.on("message", (ctx) => {
       addFilter(ctx, message);
     } else if (message.includes("حذف")) {
       deleteMessageFromGroup(ctx);
-    }
-    if (!hasReplied) {
-      if (message.includes("حذف مسدود همه")) {
-        handleBan(ctx, "حذف مسدود همه");
-        return;
-      } else if (message.includes("حذف مسدود")) {
-        handleBan(ctx, "حذف");
-        return;
-      } else if (message.includes("مسدود")) {
-        handleBan(ctx, "");
-        return;
-      }
     }
   }
 });

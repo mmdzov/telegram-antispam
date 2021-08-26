@@ -78,7 +78,7 @@ async function leaveBotFromGroup(ctx, key) {
   ctx.reply(`ربات از گروه خارج شد.`);
 }
 
-function selectPanelGroup(ctx, groupId) {
+function deletePanelGroup(ctx, groupId) {
   fs.readFile("data/session.group.json", "utf8", (err, data) => {
     if (err) console.log(err);
     data = JSON.parse(data);
@@ -94,12 +94,17 @@ function selectPanelGroup(ctx, groupId) {
           if (err) console.log(err);
         }
       );
-    } else {
-      data.push({ userId: ctx.from.id, groupId });
-      fs.writeFile("data/session.group.json", JSON.stringify(data), (err) => {
-        if (err) console.log(err);
-      });
     }
+  });
+}
+function selectPanelGroup(ctx, groupId) {
+  fs.readFile("data/session.group.json", "utf8", (err, data) => {
+    if (err) console.log(err);
+    data = JSON.parse(data);
+    data.push({ userId: ctx.from.id, groupId });
+    fs.writeFile("data/session.group.json", JSON.stringify(data), (err) => {
+      if (err) console.log(err);
+    });
   });
 }
 
@@ -299,18 +304,21 @@ function deleteMessageFromGroup(ctx) {
   let groupIndex = -1;
   if (ctx.chat.type === "supergroup") {
     groupIndex = groups.findIndex((item) => item.chatId === ctx.chat.id);
+    const userHasAdmin = groups[groupIndex]?.admin?.includes(
+      ctx.message.from.id
+    );
+    if (!userHasAdmin) return;
   } else {
     //
   }
-  const userHasAdmin = groups[groupIndex]?.admin?.includes(ctx.message.from.id);
-  if (!userHasAdmin) return;
-  let message = ctx.message.text.match(/[0-9]/g).join("");
+  let message = ctx.message.text.match(/[0-9]/g)?.join("");
+  // console.log(ctx.message.text);
   let b = 0;
   for (let i = 0; i <= +message; i++) {
     b = ctx.message.message_id - i;
     // console.log(b);
     bot.telegram
-      .deleteMessage(groups[groupIndex].chatId, b)
+      .deleteMessage(groups[groupIndex]?.chatId ?? ctx.from.id, b)
       .then((t) => {
         // console.log(t);
       })
@@ -369,4 +377,5 @@ module.exports = {
   setWelcomeMsg,
   aboutUser,
   limitSendMessageGroup,
+  deletePanelGroup,
 };
