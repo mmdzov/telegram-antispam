@@ -312,11 +312,18 @@ async function handleBanall(ctx, mode = "") {
     .trim()
     .split(/[^0-9]/g)
     .join("");
+
   if (ctx.chat.type === "supergroup") {
     let admins = await bot.telegram.getChatAdministrators(ctx.chat.id);
     if (admins.filter((admin) => admin.user.id === ctx.from.id).length === 0) {
       ctx.reply(`کاربر ${ctx.message.from.first_name} شما ادمین نیستی.`);
       return;
+    }
+    if (mode === "") {
+      if (admins.filter((admin) => admin.user.id === userId).length > 0) {
+        ctx.reply(`ادمین را نمی توانم مسدود کنم قربان.`);
+        return;
+      }
     }
   }
   let banCount = 0;
@@ -337,11 +344,10 @@ async function handleBanall(ctx, mode = "") {
           bot.telegram.kickChatMember(item.chatId, user.id);
           banCount++;
         }
-        //! admin remove nmishe ... shart gozashte she htmn
       } else {
         if (item.banlist.filter((item) => item.id === user.id).length > 0) {
           item.banlist = item.banlist.filter((ban) => ban.id !== user.id);
-          bot.telegrarm.unbanChatMember(item.chatId, user.id);
+          bot.telegram.unbanChatMember(item.chatId, user.id);
           unbanCount++;
         }
       }
