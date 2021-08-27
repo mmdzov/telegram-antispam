@@ -1,6 +1,7 @@
 const fs = require("fs");
 const { Scenes, Markup } = require("telegraf");
 const bot = require("../config/requires");
+const { inlineNewAdmin } = require("../inline/inline_newAdmin");
 const { removeSession } = require("../utils/util_session");
 const sureInlineKey = Markup.inlineKeyboard([
   [Markup.button.callback("فهمیدم", "acceptAndDelete")],
@@ -360,16 +361,121 @@ async function getGroupWelcomeMessage(ctx) {
   }
 }
 
+function setAdminTitle(ctx) {
+  const title = ctx.message.text.trim().split("لقب").join("");
+  console.log(ctx.message.reply_to_message.from.id);
+  bot.telegram.setChatAdministratorCustomTitle(
+    ctx.chat.id,
+    ctx.message.reply_to_message.from.id,
+    title
+  );
+}
+
+function setPromoteSession(ctx) {
+  let sspr = fs.readFileSync("data/session.promote.json");
+  sspr = JSON.parse(sspr);
+  const index = sspr.findIndex(
+    (item) => item.chat === ctx.chat.id && item.from === ctx.from.id
+  );
+  let ss = {
+    from: ctx.from.id,
+    target: ctx?.message.reply_to_message?.from?.id,
+    chat: ctx.chat.id,
+    messageId: [ctx.message.message_id],
+    access: {
+      can_restrict_members: false,
+      can_promote_members: false,
+      can_pin_messages: true,
+      can_manage_voice_chats: true,
+      can_manage_chat: true,
+      can_invite_users: true,
+      can_delete_messages: true,
+      can_change_info: true,
+      is_anonymous: false,
+    },
+  };
+  if (index >= 0) {
+    if (sspr[index].messageId.length === 2) {
+      bot.telegram.deleteMessage(ctx.chat.id, sspr[index].messageId[1]);
+      bot.telegram.deleteMessage(ctx.chat.id, sspr[index].messageId[0]);
+    }
+    sspr[index] = ss;
+  } else {
+    sspr.push(ss);
+  }
+  fs.writeFileSync("data/session.promote.json", JSON.stringify(sspr));
+}
+
+function changePromoteSession(ctx, msgId = 0) {
+  let sspr = fs.readFileSync("data/session.promote.json");
+  sspr = JSON.parse(sspr);
+  const index = sspr.findIndex(
+    (item) => item.chat === ctx.chat.id && item.from === ctx.from.id
+  );
+  sspr[index].messageId.push(msgId);
+  fs.writeFileSync("data/session.promote.json", JSON.stringify(sspr));
+  return sspr[index].access;
+}
+
+function getSessionPromoteAccess(ctx, key, value) {
+  let sspr = fs.readFileSync("data/session.promote.json", "utf8");
+  sspr = JSON.parse(sspr);
+  const index = sspr.findIndex(
+    (item) =>
+      item.chat === ctx.chat?.id &&
+      item.messageId.slice(-1)[0] ===
+        ctx.update?.callback_query?.message?.message_id &&
+      item.from === ctx.update?.callback_query?.from?.id
+  );
+  //   console.log(sspr);
+  let access = sspr[index]?.access;
+  if (key && value) {
+    sspr[index].access[key] = value;
+    console.log(key, value);
+    fs.writeFileSync("data/session.promote.json", JSON.stringify(sspr));
+  }
+  return { access, target: sspr[index]?.target };
+}
+
+async function promoteToAdminKeys(ctx) {
+  const userId = ctx.message?.reply_to_message;
+  if (ctx.chat.type !== "supergroup") return;
+  if (!userId) return;
+  const admins = await ctx.getChatAdministrators(ctx.chat.id);
+  if (admins.filter((admin) => admin.user.id !== ctx.from.id).length === 0) {
+    ctx.reply(`کاربر ${ctx.from.id} شما ادمین نیستی.`);
+    return;
+  }
+  setPromoteSession(ctx);
+  let { message_id } = await bot.telegram.sendMessage(
+    ctx.chat.id,
+    "سطح دسترسی مدیر جدید را مشخص کنید قربان.",
+    inlineNewAdmin(ctx, getSessionPromoteAccess(ctx).access)
+  );
+  let result = await changePromoteSession(ctx, message_id);
+  bot.telegram.editMessageReplyMarkup(
+    ctx.chat.id,
+    message_id,
+    ctx.inlineMessageId,
+    {
+      inline_keyboard: inlineNewAdmin(ctx, result).reply_markup.inline_keyboard,
+    }
+  );
+}
+
 module.exports = {
   joinGroup,
   filterGroupMessage,
+  setAdminTitle,
   getUserAllGroups,
+  promoteToAdminKeys,
   LeaveBotFromAllGroups,
   getGroupInviteLink,
   leaveBotFromGroup,
   getGroupWelcomeMessage,
   changeGroupInviteLink,
   deleteMessageFromGroup,
+  getSessionPromoteAccess,
   changeGroupBio,
   changeGroupName,
   selectPanelGroup,

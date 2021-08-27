@@ -11,6 +11,8 @@ const {
   deleteMessageFromGroup,
   getGroupWelcomeMessage,
   aboutUser,
+  setAdminTitle,
+  promoteToAdminKeys,
 } = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
@@ -42,6 +44,7 @@ const {
 } = require("./dist/ban.js");
 const { removeSession } = require("./utils/util_session.js");
 const { addMessageLog, hasLastMsgId } = require("./utils/message.log.js");
+const { inlineNewAdminAction } = require("./inline/inline_newAdmin.js");
 
 bot.start((ctx) => {
   if (ctx.chat.type === "supergroup") {
@@ -152,7 +155,7 @@ bot.action(/.+/, (ctx, next) => {
   );
 
   //!check message logs
-  if (!lastMsgId) return;
+  // if (!lastMsgId) return;
   let group = getAndModifyGroupLocks(ctx);
   const locks = group?.locks;
   if (key === "backToHome") {
@@ -203,9 +206,11 @@ bot.action(/.+/, (ctx, next) => {
         .reply_markup.inline_keyboard,
     });
   }
+  
   inlineSetting.inlineSettingAction(ctx);
   panel.inlinePanelAction(ctx);
   g.inlineGroupAction(ctx);
+  inlineNewAdminAction(ctx);
   return next();
 });
 
@@ -310,38 +315,63 @@ bot.on("message", (ctx) => {
     filterGroupMessage(ctx);
   }
   if (!hasReplied) {
-    if (message.includes("حذف مسدود همه")) {
+    if (message?.includes("حذف مسدود همه")) {
       handleBanall(ctx, "حذف مسدود همه");
       return;
-    } else if (message.includes("مسدود همه")) {
+    } else if (message?.includes("مسدود همه")) {
       handleBanall(ctx, "");
       return;
-    } else if (message.includes("حذف مسدود")) {
+    } else if (message?.includes("حذف مسدود")) {
       handleBan(ctx, "حذف");
       return;
-    } else if (message.includes("مسدود")) {
+    } else if (message?.includes("مسدود")) {
       handleBan(ctx, "");
       return;
     }
   }
   if (message) {
-    if (message.includes("!فیلتر")) {
+    if (message?.includes("!فیلتر")) {
       removeFilter(ctx, message);
     } else if (message.includes("نمایش فیلتر")) {
       viewUserFilter(ctx);
-    } else if (message.includes("فیلتر")) {
+    } else if (message?.includes("فیلتر")) {
       addFilter(ctx, message);
     } else if (message.includes("حذف")) {
       deleteMessageFromGroup(ctx);
+    } else if (message.includes("مدیر")) {
+      promoteToAdminKeys(ctx);
+    } else if (message?.includes("لقب")) {
+      // setAdminTitle(ctx);
+
+      bot.telegram
+        .promoteChatMember(ctx.chat.id, ctx.message.reply_to_message.from.id, {
+          can_restrict_members: true,
+          can_promote_members: true,
+          can_pin_messages: true,
+          can_manage_voice_chats: true,
+          can_manage_chat: true,
+          can_invite_users: true,
+          can_delete_messages: true,
+          can_change_info: true,
+        })
+        .then((success) => {
+          console.log(success);
+          ctx
+            .setChatAdministratorCustomTitle(
+              ctx.message.reply_to_message.from.id,
+              message
+            )
+            .catch((e) => {});
+        });
+      // console.log(ctx.message.reply_to_message.from.id);
     }
   }
 });
-
-bot.on("photo", (ctx) => {
-  bot.telegram.getFile(ctx.message.photo[0].file_id).then((item) => {
-    bot.telegram.setChatPhoto(-1001413685786, ctx.message.photo[0].file_id);
-  });
-});
+// bot.on("photo", (ctx) => {
+//   bot.telegram.getFile(ctx.message.photo[0].file_id).then((item) => {
+//     bot.telegram.setChatPhoto(-1001413685786, ctx.message.photo[0].file_id);
+//   });
+// });
 commandFilter(bot);
 
 bot.launch();
