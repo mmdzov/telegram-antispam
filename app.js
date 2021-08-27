@@ -13,6 +13,7 @@ const {
   aboutUser,
   setAdminTitle,
   promoteToAdminKeys,
+  setChatAdminTitle,
 } = require("./dist/group.js");
 require("dotenv").config();
 const bot = new Telegraf(process.env.TOKEN);
@@ -206,7 +207,7 @@ bot.action(/.+/, (ctx, next) => {
         .reply_markup.inline_keyboard,
     });
   }
-  
+
   inlineSetting.inlineSettingAction(ctx);
   panel.inlinePanelAction(ctx);
   g.inlineGroupAction(ctx);
@@ -340,30 +341,8 @@ bot.on("message", (ctx) => {
       deleteMessageFromGroup(ctx);
     } else if (message.includes("مدیر")) {
       promoteToAdminKeys(ctx);
-    } else if (message?.includes("لقب")) {
-      // setAdminTitle(ctx);
-
-      bot.telegram
-        .promoteChatMember(ctx.chat.id, ctx.message.reply_to_message.from.id, {
-          can_restrict_members: true,
-          can_promote_members: true,
-          can_pin_messages: true,
-          can_manage_voice_chats: true,
-          can_manage_chat: true,
-          can_invite_users: true,
-          can_delete_messages: true,
-          can_change_info: true,
-        })
-        .then((success) => {
-          console.log(success);
-          ctx
-            .setChatAdministratorCustomTitle(
-              ctx.message.reply_to_message.from.id,
-              message
-            )
-            .catch((e) => {});
-        });
-      // console.log(ctx.message.reply_to_message.from.id);
+    } else if (message?.includes("لقب") || message?.includes("عنوان")) {
+      setChatAdminTitle(ctx);
     }
   }
 });

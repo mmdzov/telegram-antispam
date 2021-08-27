@@ -463,6 +463,23 @@ async function promoteToAdminKeys(ctx) {
   );
 }
 
+function setChatAdminTitle(ctx) {
+  ctx
+    .setChatAdministratorCustomTitle(
+      ctx.message.reply_to_message.from.id,
+      ctx.message.text
+        .split(" ")
+        .filter((_, i) => i !== 0)
+        .join(" ")
+    )
+    .then((res) => {
+      ctx.reply(`عنوان ثبت شد.`);
+    })
+    .catch((e) => {
+      ctx.reply(`کاربر باید حتما توسط ربات ادمین شده باشد قربان.`);
+    });
+}
+
 module.exports = {
   joinGroup,
   filterGroupMessage,
@@ -479,6 +496,7 @@ module.exports = {
   changeGroupBio,
   changeGroupName,
   selectPanelGroup,
+  setChatAdminTitle,
   getAndModifyGroupLocks,
   setWelcomeMsg,
   aboutUser,

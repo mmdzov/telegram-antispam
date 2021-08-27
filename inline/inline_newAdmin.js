@@ -19,7 +19,13 @@ function getSessionPromoteAccess(ctx, key, value) {
   }
   return { access, target: sspr[index]?.target };
 }
-function deleteSessionPromote(ctx) {
+async function deleteSessionPromote(ctx) {
+  if (ctx.chat.type !== "supergroup") return;
+  const admins = await ctx.getChatAdministrators(ctx.chat.id);
+  if (admins.filter((admin) => admin.user.id !== ctx.from.id).length === 0) {
+    ctx.reply(`کاربر ${ctx.from.id} شما ادمین نیستی.`);
+    return;
+  }
   let sspr = fs.readFileSync("data/session.promote.json", "utf8");
   sspr = JSON.parse(sspr);
   console.log(sspr);
