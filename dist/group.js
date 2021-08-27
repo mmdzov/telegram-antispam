@@ -346,13 +346,15 @@ async function getGroupWelcomeMessage(ctx) {
     let i = await bot.telegram.getChat(groups[groupIndex].chatId);
     let s = splitWelcome.map((item) => {
       if (/[A-Z]/g.test(item)) {
-        if (item === "FIRST_NAME") item = ctx.from.first_name;
+        if (item === "FIRST_NAME")
+          item = ctx.message.new_chat_member.first_name;
         if (item === "GROUP_NAME") {
           item = i.title;
           return item;
         }
-        if (item === "LAST_NAME") item = ctx.from.last_name;
-        if (item === "USERNAME") item = "@" + ctx.from.username;
+        // if (item === "LAST_NAME") item = ctx.message.new_chat_member.last_name;
+        if (item === "USERNAME")
+          item = "@" + ctx.message.new_chat_member.username;
         return item;
       }
       return item;
@@ -480,11 +482,20 @@ function setChatAdminTitle(ctx) {
     });
 }
 
+async function getLocks(ctx) {
+  let groups = fs.readFileSync("data/groups.json", "utf8");
+  groups = JSON.parse(groups);
+  const index = groups.findIndex((item) => item.chatId === ctx.chat.id);
+  let hasAdmin = await userHasAdmin(ctx);
+  return { locks: groups[index].locks, userHasAdmin: hasAdmin };
+}
+
 module.exports = {
   joinGroup,
   filterGroupMessage,
   setAdminTitle,
   getUserAllGroups,
+  getLocks,
   promoteToAdminKeys,
   LeaveBotFromAllGroups,
   getGroupInviteLink,
