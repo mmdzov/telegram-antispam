@@ -16,8 +16,7 @@
       "gif": false,
       "sticker": false,
       "file": false,
-      "limitSend": 10,
-      "addUser": true
+      "addUser": false
     },
     "rules": { "verify": false, "joinMessage": false },
     "welcomeMsg": "سلام FIRST_NAME به گروه GROUP_NAME خوش اومدی",

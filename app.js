@@ -2,7 +2,6 @@ const { Telegraf } = require("telegraf");
 const {
   joinGroup,
   getAndModifyGroupLocks,
-  limitSendMessageGroup,
   setWelcomeMsg,
   changeGroupName,
   changeGroupBio,
@@ -47,6 +46,8 @@ const {
 const { removeSession } = require("./utils/util_session.js");
 const { addMessageLog, hasLastMsgId } = require("./utils/message.log.js");
 const { inlineNewAdminAction } = require("./inline/inline_newAdmin.js");
+let { RateLimiter } = require("@riddea/telegraf-rate-limiter");
+const rateLimiter = new RateLimiter(6, 3000);
 
 bot.start((ctx) => {
   if (ctx.chat.type === "supergroup") {
@@ -90,7 +91,6 @@ bot.start((ctx) => {
                   gif: false,
                   sticker: false,
                   file: false,
-                  limitSend: 10,
                   addUser: false,
                 },
                 rules: {
@@ -259,7 +259,15 @@ bot.hears("پاکسازی مسدود", (ctx, next) => {
 
 bot.on("message", (ctx, next) => {
   // console.log(ctx);
-
+  const limited = rateLimiter.take(`${ctx.from.id}${ctx.chat.id}`);
+  if (limited) {
+    bot.telegram.kickChatMember(ctx.chat.id, ctx.from.id);
+    // bot.telegram.sendMessage(
+    //   ctx.chat.id,
+    //   `کاربر ${ctx.from.id} به دلیل ارسال هرزنامه از گروه مسدود شد.`
+    // );
+    return;
+  }
   fs.readFile("data/sessions.json", "utf8", (err, data) => {
     data = JSON.parse(data);
     const index = data.findIndex((item) => item.body.from === ctx.from.id);
@@ -281,10 +289,6 @@ bot.on("message", (ctx, next) => {
       }
       if (data[index].payload === "unbanallUser") {
         handleBanUserWithKey(ctx, "", "unbanallUser");
-      }
-      if (data[index].payload === "limitSend") {
-        limitSendMessageGroup(ctx);
-        removeSession("from", ctx.from.id, "limitSend");
       }
       if (data[index].payload === "setWelcomeMsg") {
         setWelcomeMsg(ctx);

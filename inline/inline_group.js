@@ -84,10 +84,6 @@ const inlineGroup = (ctx, Method = {}) => {
       b(lock(locks?.sticker), `lockSticker`),
     ].reverse(),
     [
-      b("محدودیت ارسال", `limitSend`),
-      b(locks?.limitSend, `limitSend`),
-    ].reverse(),
-    [
       b("قفل افزودن کاربر", `lockAddUser`),
       b(lock(locks?.addUser), `lockAddUser`),
     ].reverse(),
@@ -245,19 +241,6 @@ function inlineGroupAction(ctx) {
         rule: false,
       }).inlineGroupLocks.reply_markup.inline_keyboard,
     });
-  } else if (key === "limitSend") {
-    addSession(
-      {
-        from: ctx.from.id,
-        message_id: ctx.update.callback_query?.message.message_id,
-        inlineMessageId: ctx.inlineMessageId,
-        chatId: group.chatId,
-      },
-      "limitSend"
-    );
-    ctx.reply(`تعداد محدودیت ارسال پیغام را وارد کنید.
-این کار برای جلوگیری از اسپم در گروه صورت میگیره.
-تعداد پیشفرض 10 هست یعنی اگه کاربر ده پیغام پشت سر همدیگر با اختلاف زمانی کوتاه ارسال کند مسدود میشود`);
   } else if (key === "lockAddUser") {
     ctx.editMessageReplyMarkup({
       inline_keyboard: inlineGroup(ctx, {

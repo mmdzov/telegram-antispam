@@ -17,9 +17,20 @@ async function joinGroup(newData, cb) {
     if (index === -1) {
       await data.push(newData);
       await fs.writeFileSync("data/groups.json", JSON.stringify(data));
+
       cb("گروه با موفقیت ثبت شد");
     } else {
       cb("دستور بده قربان");
+    }
+    try {
+      fs.readFileSync(`message-logs/${Math.abs(newData.chatId)}.json`, "utf8");
+    } catch (e) {
+      if (e?.code === "ENOENT") {
+        fs.writeFileSync(
+          `message-logs/${"g-" + Math.abs(newData.chatId)}.json`,
+          JSON.stringify([])
+        );
+      }
     }
   } catch (e) {
     console.log(e);
@@ -106,35 +117,6 @@ function selectPanelGroup(ctx, groupId) {
     fs.writeFile("data/session.group.json", JSON.stringify(data), (err) => {
       if (err) console.log(err);
     });
-  });
-}
-
-function limitSendMessageGroup(ctx) {
-  // console.log(ctx.update.callback_query);
-  const message = +ctx.message.text;
-  if (!message || message > 1000 || message < 3) {
-    ctx.reply("فقط اعداد 3 تا 1000 مورد قبول هستند");
-    return;
-  }
-  fs.readFile("data/sessions.json", "utf8", (err, data) => {
-    if (err) console.log(err);
-    data = JSON.parse(data);
-    const index = data.findIndex(
-      (item) => item.body.from === ctx.from.id && item.payload === "limitSend"
-    );
-    if (index >= 0) {
-      getAndModifyGroupLocks(ctx, "limitSend", message);
-      // ctx.editMessageReplyMarkup(
-      //   data[index].chatId,
-      //   data[index].message_id,
-      //   undefined,
-      //   g.inlineGroup(ctx, { key: "limitSend", value: message })
-      //     .inlineGroupLocks
-      // );
-      ctx.reply("اعمال شد");
-    } else {
-      ctx.reply("مشکلی پیش آمده لطفا بازگشت بزنید و دوباره امتحان کنید");
-    }
   });
 }
 
@@ -511,6 +493,5 @@ module.exports = {
   getAndModifyGroupLocks,
   setWelcomeMsg,
   aboutUser,
-  limitSendMessageGroup,
   deletePanelGroup,
 };
