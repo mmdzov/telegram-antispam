@@ -7,33 +7,19 @@ const sureInlineKey = Markup.inlineKeyboard([
   [Markup.button.callback("فهمیدم", "acceptAndDelete")],
 ]);
 async function joinGroup(newData, cb) {
-  try {
-    let data = await fs.readFileSync("data/groups.json", {
-      encoding: "utf8",
-    });
-    data = JSON.parse(data);
-    let index = await data.findIndex((item) => item.chatId === newData.chatId);
-    // console.log(index);
-    if (index === -1) {
-      await data.push(newData);
-      await fs.writeFileSync("data/groups.json", JSON.stringify(data));
+  let data = await fs.readFileSync("data/groups.json", {
+    encoding: "utf8",
+  });
+  data = JSON.parse(data);
+  let index = await data.findIndex((item) => item.chatId === newData.chatId);
+  // console.log(index);
+  if (index === -1) {
+    await data.push(newData);
+    await fs.writeFileSync("data/groups.json", JSON.stringify(data));
 
-      cb("گروه با موفقیت ثبت شد");
-    } else {
-      cb("دستور بده قربان");
-    }
-    try {
-      fs.readFileSync(`message-logs/${Math.abs(newData.chatId)}.json`, "utf8");
-    } catch (e) {
-      if (e?.code === "ENOENT") {
-        fs.writeFileSync(
-          `message-logs/${"g-" + Math.abs(newData.chatId)}.json`,
-          JSON.stringify([])
-        );
-      }
-    }
-  } catch (e) {
-    console.log(e);
+    cb("گروه با موفقیت ثبت شد");
+  } else {
+    cb("دستور بده قربان");
   }
 }
 
